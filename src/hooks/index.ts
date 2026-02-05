@@ -9,26 +9,41 @@ export { useGlassPanel, useIsLightTheme, useThemeClass } from './useThemeClass';
 export { useViewTheme } from './useViewTheme';
 export type { ViewTheme } from './useViewTheme';
 
-// API Hooks (Tauri)
+// API Hooks (Tauri) - Modular Exports
 export {
+  // Health & Status
   useHealth,
   useStatus,
-  useModels,
-  useDefaultModel,
+  useProvidersStatus,
+  // Analysis
   useAnalyzeImage,
+  // Restoration
   useRestoreImage,
   useRestorationWorkflow,
+  // History
   useHistory,
   useClearHistory,
+  // Settings
   useSettings,
   useSaveSettings,
   useSetApiKey,
-  useProvidersStatus,
+  // Models
+  useModels,
+  useDefaultModel,
+  useOllamaModels,
+  useAvailableModels,
+  useSelectedModel,
+  useSetSelectedModel,
+  // Query Keys
   queryKeys,
+  // Utilities
+  safeInvoke,
+  fileToBase64,
 } from './useApi';
 
 // Types from API
 export type {
+  // Core Types
   AnalysisResult,
   RestorationResult,
   HistoryEntry,
@@ -36,6 +51,14 @@ export type {
   HealthResponse,
   AppSettings,
   DamageType,
+  DamageSeverity,
+  // Model Types
+  AiModel,
+  AvailableModel,
+  ModelCapability,
+  // Workflow Types
+  WorkflowProgress,
+  WorkflowResult,
 } from './useApi';
 
 // Custom Hooks

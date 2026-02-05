@@ -1,0 +1,127 @@
+﻿{
+  "app": {
+    "title": "Tissaia-AI",
+    "subtitle": "AI Photo Restoration",
+    "tagline": "Bring memories back to life"
+  },
+  "nav": {
+    "upload": "Upload Photo",
+    "analyze": "Analysis",
+    "restore": "Restoration",
+    "history": "History",
+    "settings": "Settings",
+    "health": "System Status"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "MAIN",
+      "data": "DATA",
+      "system": "SYSTEM"
+    }
+  },
+  "upload": {
+    "title": "Upload photo for restoration",
+    "dragdrop": "Drag and drop photo here",
+    "or": "or",
+    "browse": "Browse files",
+    "formats": "Supported formats: JPEG, PNG, WebP",
+    "maxSize": "Maximum size: 20MB",
+    "added": "{{name}} added",
+    "uploadedPhotos": "Uploaded photos ({{count}})",
+    "removeAll": "Remove all",
+    "analyzePhotos": "Analyze photos"
+  },
+  "analyze": {
+    "title": "Photo Analysis",
+    "faces": "Detected faces",
+    "damage": "Damage assessment",
+    "era": "Estimated era",
+    "quality": "Quality",
+    "recommendations": "Recommendations",
+    "scratches": "Scratches",
+    "fading": "Fading",
+    "tears": "Tears",
+    "waterDamage": "Water damage"
+  },
+  "restore": {
+    "title": "Restoration Options",
+    "removeScratches": "Remove scratches",
+    "fixFading": "Fix fading",
+    "enhanceFaces": "Enhance faces",
+    "colorize": "Colorize (B&W)",
+    "denoise": "Reduce noise",
+    "sharpen": "Sharpen",
+    "start": "Start Restoration",
+    "processing": "Processing..."
+  },
+  "results": {
+    "title": "Restoration Result",
+    "before": "Before",
+    "after": "After",
+    "download": "Download",
+    "improvements": "Applied improvements",
+    "qualityBefore": "Quality before",
+    "qualityAfter": "Quality after",
+    "processingTime": "Processing time"
+  },
+  "progress": {
+    "initializing": "Initializing system...",
+    "uploading": "Uploading data...",
+    "analyzing": "Analyzing image structure...",
+    "detecting": "Detecting damage...",
+    "restoring": "Reconstructing pixels...",
+    "enhancing": "Enhancing details...",
+    "finalizing": "Finalizing operation...",
+    "complete": "Operation completed successfully",
+    "estimatedTime": "Estimated time",
+    "analysis": {
+      "init": "Preparing image...",
+      "colors": "Detecting color palette...",
+      "textures": "Analyzing textures...",
+      "faces": "Detecting faces...",
+      "damage": "Identifying damage...",
+      "report": "Generating AI report..."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeSystem": "System",
+    "language": "Language",
+    "autoAnalyze": "Auto-analyze on upload",
+    "preserveOriginals": "Preserve originals",
+    "selectModel": "Select AI Model",
+    "modelDescription": "Model used for analysis and restoration",
+    "noApiKey": "No API key"
+  },
+  "health": {
+    "title": "System Status",
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unavailable": "Unavailable",
+    "latency": "Latency",
+    "uptime": "Uptime"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next"
+  },
+  "errors": {
+    "upload": "File upload error",
+    "analysis": "Photo analysis error",
+    "restore": "Restoration error",
+    "network": "Network error",
+    "timeout": "Request timeout"
+  }
+}

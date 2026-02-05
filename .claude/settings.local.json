@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__activate_project",
+      "Bash(pnpm dev)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_file_upload",
+      "mcp__playwright__browser_click",
+      "mcp__desktop-commander__create_directory",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_console_messages",
+      "Bash(pnpm tauri:dev:*)",
+      "Bash(if not exist \"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\Tissaia\\\\public\\\\test-photos\" mkdir \"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\Tissaia\\\\public\\\\test-photos\")",
+      "Bash(for i in 4 5 6 7 8 9 10)",
+      "Bash(do copy \"G:\\\\Mój dysk\\\\pulpit\\\\Frankowscy$i.png\" \"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\Tissaia\\\\public\\\\test-photos\"\" 2>nul || echo \"File $i.png not found or failed to copy \")",
+      "Bash(done)",
+      "Bash(powershell:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_run_code",
+      "Bash(copy:*)",
+      "mcp__playwright__browser_close",
+      "Bash(cmd /c copy \"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\Tissaia\\\\public\\\\test-photos\\\\2.png\" \"C:\\\\Users\\\\BIURODOM\\\\AppData\\\\Local\\\\AnthropicClaude\\\\app-1.1.381\\\\2.png\")",
+      "Bash(cmd /c dir \"C:\\\\Users\\\\BIURODOM\\\\AppData\\\\Local\\\\AnthropicClaude\\\\app-1.1.381\\\\*.png\")",
+      "Bash(cmd /c \"copy \"\"C:\\\\Users\\\\BIURODOM\\\\Desktop\\\\Tissaia\\\\public\\\\test-photos\\\\2.png\"\" \"\"C:\\\\Users\\\\BIURODOM\\\\AppData\\\\Local\\\\AnthropicClaude\\\\app-1.1.381\\\\2.png\"\" && dir \"\"C:\\\\Users\\\\BIURODOM\\\\AppData\\\\Local\\\\AnthropicClaude\\\\app-1.1.381\\\\2.png\"\"\")",
+      "mcp__kapture__list_tabs",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout:*)"
+    ]
+  }
+}

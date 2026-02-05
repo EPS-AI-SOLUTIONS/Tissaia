@@ -1,0 +1,354 @@
+/* src/index.css */
+/* Tissaia-AI Matrix Glass Theme - Regis Architecture */
+
+@import "tailwindcss";
+
+/* ============================================
+   TAILWIND THEME CONFIGURATION
+   ============================================ */
+@theme {
+  --color-matrix-bg-primary: #0a1f0a;
+  --color-matrix-bg-secondary: #001a00;
+  --color-matrix-bg-tertiary: #0d2a0d;
+  --color-matrix-accent: #00ff41;
+  --color-matrix-accent-dim: #00cc33;
+  --color-matrix-accent-glow: #33ff66;
+  --color-matrix-text: #c0ffc0;
+  --color-matrix-text-dim: #80c080;
+  --color-matrix-border: #1a3a1a;
+  --color-matrix-glass: rgba(10, 31, 10, 0.8);
+  --color-matrix-glass-light: rgba(255, 255, 255, 0.05);
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --shadow-matrix-glow: 0 0 20px rgba(0, 255, 65, 0.3);
+  --shadow-matrix-glow-sm: 0 0 10px rgba(0, 255, 65, 0.2);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   ROOT VARIABLES
+   ============================================ */
+:root {
+  --matrix-bg-primary: #0a1f0a;
+  --matrix-bg-secondary: #001a00;
+  --matrix-accent: #00ff41;
+  --matrix-glass-bg: rgba(0, 31, 0, 0.7);
+
+  /* LIGHT MODE (The White Wolf) */
+  --glass-light-bg: rgba(255, 255, 255, 0.4);
+  --glass-light-border: 1px solid rgba(255, 255, 255, 0.3);
+  --glass-light-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --glass-light-text: #1a1a1a;
+
+  /* DARK MODE (The Butcher of Blaviken) */
+  --glass-dark-bg: rgba(17, 25, 40, 0.75);
+  --glass-dark-border: 1px solid rgba(255, 255, 255, 0.125);
+  --glass-dark-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-dark-text: #ffffff;
+
+  /* SHARED PHYSICS */
+  --glass-blur: blur(16px) saturate(180%);
+  --glass-radius: 12px;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+html {
+  font-size: 80%;
+  height: 100%;
+  background: var(--matrix-bg-primary);
+}
+
+body {
+  margin: 0;
+  background: transparent;
+  color: #f0f5f0;
+  font-family: 'JetBrains Mono', monospace;
+  overflow: hidden;
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(0, 255, 65, 0.4), rgba(0, 200, 50, 0.2));
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(0, 255, 65, 0.7), rgba(0, 200, 50, 0.5));
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 65, 0.4) transparent;
+}
+
+/* ============================================
+   GLASS PANEL STYLES
+   ============================================ */
+
+/* Glass Panel - Light Mode */
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: none;
+  box-shadow: var(--glass-light-shadow);
+  color: var(--glass-light-text);
+  border-radius: var(--glass-radius);
+}
+
+/* Glass Panel - Dark Mode */
+.glass-panel-dark {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: none;
+  box-shadow: var(--glass-dark-shadow);
+  color: var(--glass-dark-text);
+  border-radius: var(--glass-radius);
+}
+
+/* Legacy glass-panel for compatibility */
+.glass-panel {
+  background: rgba(15, 25, 40, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* Glass Card */
+.glass-card {
+  background: rgba(15, 25, 40, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* Glass Input */
+.glass-input {
+  background: rgba(10, 20, 30, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Glass Button */
+.glass-button {
+  background: rgba(0, 255, 65, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Text Glow */
+.text-glow {
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+/* Matrix Rain Background */
+.matrix-rain-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ctext fill='%2300ff4120' font-family='monospace' font-size='10'%3E%3Ctspan x='10' y='20'%3E01%3C/tspan%3E%3Ctspan x='30' y='40'%3E10%3C/tspan%3E%3Ctspan x='50' y='60'%3E11%3C/tspan%3E%3Ctspan x='70' y='80'%3E00%3C/tspan%3E%3C/text%3E%3C/svg%3E");
+  background-size: 100px 100px;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thumb-matrix-accent\/20::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 65, 0.2);
+  border-radius: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   PHOTO RESTORATION SPECIFIC
+   ============================================ */
+.photo-preview {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: repeating-conic-gradient(
+    #1a1a1a 0% 25%,
+    #2a2a2a 0% 50%
+  ) 50% / 20px 20px;
+}
+
+.photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dropzone:hover,
+.dropzone.active {
+  border-color: #00ff41;
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.dropzone.active {
+  transform: scale(1.02);
+}
+
+/* ============================================
+   LIGHT MODE SUPPORT
+   ============================================ */
+:root.light {
+  --matrix-bg-primary: #f5f8f5;
+  --matrix-bg-secondary: #e8ede8;
+  --matrix-accent: #2d6a4f;
+  --matrix-accent-hover: #1b4332;
+  --matrix-glass-bg: rgba(255, 255, 255, 0.92);
+  --matrix-text-primary: #1a2a1a;
+  --matrix-text-secondary: #2d3d2d;
+  --matrix-text-muted: #4a5a4a;
+}
+
+:root.light body {
+  background: linear-gradient(135deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
+  color: var(--matrix-text-primary);
+}
+
+:root.light html {
+  background: var(--matrix-bg-primary);
+}
+
+:root.light .glass-panel {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(45, 106, 79, 0.15);
+}
+
+:root.light .glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(45, 106, 79, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 50, 0, 0.1);
+}
+
+:root.light .glass-input {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(45, 106, 79, 0.2);
+}
+
+:root.light .glass-button {
+  background: rgba(45, 106, 79, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(45, 106, 79, 0.2);
+}
+
+:root.light .glass-button:hover {
+  background: rgba(45, 106, 79, 0.2);
+  border-color: rgba(45, 106, 79, 0.4);
+  box-shadow: 0 0 15px rgba(45, 106, 79, 0.15);
+}
+
+/* Light mode scrollbar */
+:root.light ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(45, 106, 79, 0.5), rgba(45, 106, 79, 0.25));
+}
+
+:root.light ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(45, 106, 79, 0.7), rgba(45, 106, 79, 0.45));
+  box-shadow: 0 0 6px rgba(45, 106, 79, 0.3);
+}
+
+:root.light * {
+  scrollbar-color: rgba(45, 106, 79, 0.4) transparent;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}

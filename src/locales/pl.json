@@ -1,0 +1,127 @@
+﻿{
+  "app": {
+    "title": "Tissaia-AI",
+    "subtitle": "Restauracja zdjęć AI",
+    "tagline": "Przywróć wspomnienia do życia"
+  },
+  "nav": {
+    "upload": "Wgraj zdjęcie",
+    "analyze": "Analiza",
+    "restore": "Restauracja",
+    "history": "Historia",
+    "settings": "Ustawienia",
+    "health": "Status systemu"
+  },
+  "sidebar": {
+    "groups": {
+      "main": "GŁÓWNE",
+      "data": "DANE",
+      "system": "SYSTEM"
+    }
+  },
+  "upload": {
+    "title": "Wgraj zdjęcie do restauracji",
+    "dragdrop": "Przeciągnij i upuść zdjęcie tutaj",
+    "or": "lub",
+    "browse": "Wybierz plik",
+    "formats": "Obsługiwane formaty: JPEG, PNG, WebP",
+    "maxSize": "Maksymalny rozmiar: 20MB",
+    "added": "{{name}} dodano",
+    "uploadedPhotos": "Wgrane zdjęcia ({{count}})",
+    "removeAll": "Usuń wszystkie",
+    "analyzePhotos": "Analizuj zdjęcia"
+  },
+  "analyze": {
+    "title": "Analiza zdjęcia",
+    "faces": "Wykryte twarze",
+    "damage": "Ocena uszkodzeń",
+    "era": "Szacowana epoka",
+    "quality": "Jakość",
+    "recommendations": "Rekomendacje",
+    "scratches": "Rysy",
+    "fading": "Wyblakłe kolory",
+    "tears": "Rozdarcia",
+    "waterDamage": "Uszkodzenia wodą"
+  },
+  "restore": {
+    "title": "Opcje restauracji",
+    "removeScratches": "Usuń rysy",
+    "fixFading": "Napraw kolory",
+    "enhanceFaces": "Popraw twarze",
+    "colorize": "Koloryzuj (B&W)",
+    "denoise": "Redukcja szumu",
+    "sharpen": "Wyostrz",
+    "start": "Rozpocznij restaurację",
+    "processing": "Przetwarzanie..."
+  },
+  "results": {
+    "title": "Wynik restauracji",
+    "before": "Przed",
+    "after": "Po",
+    "download": "Pobierz",
+    "improvements": "Zastosowane ulepszenia",
+    "qualityBefore": "Jakość przed",
+    "qualityAfter": "Jakość po",
+    "processingTime": "Czas przetwarzania"
+  },
+  "progress": {
+    "initializing": "Inicjalizacja systemu...",
+    "uploading": "Przesyłanie danych...",
+    "analyzing": "Analizowanie struktury obrazu...",
+    "detecting": "Wykrywanie uszkodzeń...",
+    "restoring": "Rekonstrukcja pikseli...",
+    "enhancing": "Ulepszanie detali...",
+    "finalizing": "Finalizacja operacji...",
+    "complete": "Operacja zakończona pomyślnie",
+    "estimatedTime": "Szacowany czas",
+    "analysis": {
+      "init": "Przygotowywanie obrazu...",
+      "colors": "Wykrywanie palety kolorów...",
+      "textures": "Analizowanie tekstur...",
+      "faces": "Wykrywanie twarzy...",
+      "damage": "Identyfikowanie uszkodzeń...",
+      "report": "Generowanie raportu AI..."
+    }
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "theme": "Motyw",
+    "themeDark": "Ciemny",
+    "themeLight": "Jasny",
+    "themeSystem": "Systemowy",
+    "language": "Język",
+    "autoAnalyze": "Auto-analiza po wgraniu",
+    "preserveOriginals": "Zachowaj oryginały",
+    "selectModel": "Wybierz model AI",
+    "modelDescription": "Model używany do analizy i restauracji",
+    "noApiKey": "Brak klucza API"
+  },
+  "health": {
+    "title": "Status systemu",
+    "healthy": "Sprawny",
+    "degraded": "Ograniczony",
+    "unavailable": "Niedostępny",
+    "latency": "Opóźnienie",
+    "uptime": "Czas działania"
+  },
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "save": "Zapisz",
+    "delete": "Usuń",
+    "close": "Zamknij",
+    "retry": "Ponów",
+    "back": "Wstecz",
+    "next": "Dalej"
+  },
+  "errors": {
+    "upload": "Błąd wgrywania pliku",
+    "analysis": "Błąd analizy zdjęcia",
+    "restore": "Błąd restauracji",
+    "network": "Błąd połączenia",
+    "timeout": "Przekroczono limit czasu"
+  }
+}

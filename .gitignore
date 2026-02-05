@@ -1,0 +1,59 @@
+# ===============================================
+# Tissaia - Comprehensive .gitignore
+# React + Node.js + Tauri Project
+# ===============================================
+
+# ----- COMMON (All Projects) -----
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary
+*.tmp
+*.temp
+
+# ----- NODE.JS -----
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.cache/
+.vite/
+vite.config.js
+vite.config.d.ts
+.env
+.env.local
+.env.*.local
+
+# ----- REACT -----
+
+storybook-static/
+playwright-report/
+test-results/
+.playwright/
+
+# ----- PROJECT-SPECIFIC -----
+
+# Tauri
+src-tauri/target/
+
+# pnpm
+.pnpm-store/
+
+# Rust/Cargo
+target/
+Cargo.lock
+**/*.rs.bk
