@@ -90,7 +90,7 @@ describe('Sidebar', () => {
 
     it('displays version info', () => {
       renderWithProviders(<Sidebar />);
-      expect(screen.getByText(/v2.0.0/)).toBeInTheDocument();
+      expect(screen.getByText(/v3.0.0/)).toBeInTheDocument();
     });
   });
 
