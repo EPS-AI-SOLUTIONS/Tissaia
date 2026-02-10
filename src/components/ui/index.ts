@@ -42,3 +42,6 @@ export {
   ProviderStatusIndicator,
   StatusIndicator,
 } from './StatusIndicator';
+export type { VerificationBadgeProps } from './VerificationBadge';
+// Verification Badge Component
+export { default as VerificationBadge } from './VerificationBadge';

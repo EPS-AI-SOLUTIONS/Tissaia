@@ -5,6 +5,7 @@
  * Photo management, temporary restoration results, and pipeline state.
  */
 import { create } from 'zustand';
+import type { VerificationResult } from '../hooks/api/types';
 import type { PhotoFile } from '../types';
 
 // ============================================
@@ -26,6 +27,11 @@ interface PhotoState {
   pipelineResults: Record<string, { restoration: unknown }>;
   setPipelineResult: (photoId: string, restoration: unknown) => void;
   clearPipelineResults: () => void;
+
+  // Verification results (fire-and-forget)
+  verificationResults: Record<string, VerificationResult>;
+  setVerificationResult: (key: string, result: VerificationResult) => void;
+  clearVerificationResults: () => void;
 
   resetPhotos: () => void;
 }
@@ -62,6 +68,17 @@ export const usePhotoStore = create<PhotoState>()((set) => ({
     })),
   clearPipelineResults: () => set({ pipelineResults: {} }),
 
+  // Verification results
+  verificationResults: {},
+  setVerificationResult: (key, result) =>
+    set((state) => ({
+      verificationResults: {
+        ...state.verificationResults,
+        [key]: result,
+      },
+    })),
+  clearVerificationResults: () => set({ verificationResults: {} }),
+
   resetPhotos: () =>
     set({
       photos: [],
@@ -69,6 +86,7 @@ export const usePhotoStore = create<PhotoState>()((set) => ({
       detectionResult: null,
       croppedPhotos: [],
       pipelineResults: {},
+      verificationResults: {},
     }),
 }));
 

@@ -24,6 +24,11 @@ export type {
   OperationType,
   ProviderStatus,
   RestorationResult,
+  VerificationCheck,
+  VerificationIssue,
+  VerificationResult,
+  VerificationStage,
+  VerificationStatus,
 } from './types';
 export type { CropPhotosParams, DetectPhotosParams } from './useCrop';
 // Crop Hooks
@@ -47,6 +52,13 @@ export { useRestoreImage } from './useRestoration';
 export type { SetApiKeyParams } from './useSettings';
 // Settings Hooks
 export { useSaveSettings, useSetApiKey, useSettings } from './useSettings';
+export type {
+  VerifyCropParams,
+  VerifyDetectionParams,
+  VerifyRestorationParams,
+} from './useVerification';
+// Verification Hooks
+export { useVerifyCrop, useVerifyDetection, useVerifyRestoration } from './useVerification';
 export type { FileBase64Result } from './utils';
 // Utilities
 export {

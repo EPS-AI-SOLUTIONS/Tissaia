@@ -10,6 +10,8 @@ import { Play, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useVerifyRestoration } from '../../hooks/api/useVerification';
+import { fileToBase64 } from '../../hooks/api/utils';
 import { useRestoreImage } from '../../hooks/useApi';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
@@ -29,6 +31,8 @@ export default function RestoreView() {
   const photos = usePhotoStore((s) => s.photos);
 
   const restoreMutation = useRestoreImage();
+  const verifyMutation = useVerifyRestoration();
+  const setVerificationResult = usePhotoStore((s) => s.setVerificationResult);
   const [isRestoring, setIsRestoring] = useState(false);
 
   const currentPhoto = photos[0];
@@ -52,6 +56,19 @@ export default function RestoreView() {
       usePhotoStore.setState({
         restorationResult: result,
       });
+
+      // Fire-and-forget: verify restoration quality
+      const { base64, mimeType } = await fileToBase64(currentPhoto.file);
+      verifyMutation
+        .mutateAsync({
+          originalBase64: base64,
+          restoredBase64: result.restored_image,
+          mimeType,
+        })
+        .then((vr) => {
+          setVerificationResult('restoration_single', vr);
+        })
+        .catch(() => {});
 
       toast.success('Restauracja zakończona!');
       setCurrentView('results');

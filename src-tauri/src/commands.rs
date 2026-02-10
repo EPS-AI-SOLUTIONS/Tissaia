@@ -2,7 +2,7 @@
 use crate::models::{
     AiModel, AppSettings, BoundingBox, CropResult, CroppedPhoto,
     DetectionResult, HealthResponse, HistoryEntry, OperationType, ProviderStatus,
-    RestorationResult,
+    RestorationResult, VerificationResult,
 };
 use crate::state::AppState;
 use log::{error, info};
@@ -299,4 +299,137 @@ pub async fn crop_photos(
     _original_filename: String,
 ) -> Result<CropResult, String> {
     Err("Image processing feature is not enabled. Rebuild with --features image-processing".to_string())
+}
+
+// ============================================
+// VERIFICATION AGENT COMMANDS
+// ============================================
+
+#[tauri::command]
+pub async fn verify_restoration(
+    state: State<'_, AppStateHandle>,
+    original_base64: String,
+    restored_base64: String,
+    mime_type: String,
+) -> Result<VerificationResult, String> {
+    info!("=== VERIFY_RESTORATION START ===");
+
+    let (api_key, client, enabled) = {
+        let state_guard = state.lock().await;
+        let enabled = state_guard.settings.verification_enabled;
+        let key = state_guard.get_api_key("google")
+            .ok_or("Google API key required for verification")?
+            .clone();
+        let client = state_guard.client().clone();
+        (key, client, enabled)
+    };
+
+    if !enabled {
+        return Err("Verification is disabled in settings".to_string());
+    }
+
+    let ai = AiProvider::with_client(client);
+    let result = ai.verify_restoration(&api_key, &original_base64, &restored_base64, &mime_type)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    {
+        let mut state_guard = state.lock().await;
+        let mut entry = HistoryEntry::new(
+            OperationType::Verification,
+            format!("verify_restoration_{}", result.id),
+            "google-flash",
+        );
+        entry.success = true;
+        state_guard.add_history(entry);
+    }
+
+    info!("=== VERIFY_RESTORATION END === (status: {:?}, confidence: {})", result.status, result.confidence);
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn verify_detection(
+    state: State<'_, AppStateHandle>,
+    image_base64: String,
+    mime_type: String,
+    bounding_boxes: Vec<BoundingBox>,
+) -> Result<VerificationResult, String> {
+    info!("=== VERIFY_DETECTION START ===");
+
+    let (api_key, client, enabled) = {
+        let state_guard = state.lock().await;
+        let enabled = state_guard.settings.verification_enabled;
+        let key = state_guard.get_api_key("google")
+            .ok_or("Google API key required for verification")?
+            .clone();
+        let client = state_guard.client().clone();
+        (key, client, enabled)
+    };
+
+    if !enabled {
+        return Err("Verification is disabled in settings".to_string());
+    }
+
+    let ai = AiProvider::with_client(client);
+    let result = ai.verify_detection(&api_key, &image_base64, &mime_type, &bounding_boxes)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    {
+        let mut state_guard = state.lock().await;
+        let mut entry = HistoryEntry::new(
+            OperationType::Verification,
+            format!("verify_detection_{}", result.id),
+            "google-flash",
+        );
+        entry.success = true;
+        state_guard.add_history(entry);
+    }
+
+    info!("=== VERIFY_DETECTION END === (status: {:?})", result.status);
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn verify_crop(
+    state: State<'_, AppStateHandle>,
+    cropped_base64: String,
+    mime_type: String,
+    crop_index: usize,
+) -> Result<VerificationResult, String> {
+    info!("=== VERIFY_CROP {} START ===", crop_index);
+
+    let (api_key, client, enabled) = {
+        let state_guard = state.lock().await;
+        let enabled = state_guard.settings.verification_enabled;
+        let key = state_guard.get_api_key("google")
+            .ok_or("Google API key required for verification")?
+            .clone();
+        let client = state_guard.client().clone();
+        (key, client, enabled)
+    };
+
+    if !enabled {
+        return Err("Verification is disabled in settings".to_string());
+    }
+
+    let ai = AiProvider::with_client(client);
+    let result = ai.verify_crop(&api_key, &cropped_base64, &mime_type, crop_index)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    {
+        let mut state_guard = state.lock().await;
+        let mut entry = HistoryEntry::new(
+            OperationType::Verification,
+            format!("verify_crop_{}_{}", crop_index, result.id),
+            "google-flash",
+        );
+        entry.success = true;
+        state_guard.add_history(entry);
+    }
+
+    info!("=== VERIFY_CROP {} END === (status: {:?})", crop_index, result.status);
+    Ok(result)
 }

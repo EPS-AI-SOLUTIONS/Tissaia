@@ -30,6 +30,7 @@ pub struct HistoryEntry {
 pub enum OperationType {
     Restoration,
     PhotoSeparation,
+    Verification,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +49,12 @@ pub struct AppSettings {
     pub auto_save: bool,
     pub output_quality: u8,
     pub preferred_provider: Option<String>,
+    #[serde(default = "default_true")]
+    pub verification_enabled: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for AppSettings {
@@ -58,6 +65,7 @@ impl Default for AppSettings {
             auto_save: true,
             output_quality: 90,
             preferred_provider: None,
+            verification_enabled: true,
         }
     }
 }
@@ -149,4 +157,69 @@ pub struct CropResult {
     pub original_filename: String,
     pub photos: Vec<CroppedPhoto>,
     pub processing_time_ms: u64,
+}
+
+// ============================================
+// VERIFICATION AGENT TYPES
+// ============================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VerificationStatus {
+    Pass,
+    Warning,
+    Fail,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VerificationStage {
+    Restoration,
+    Detection,
+    Crop,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationCheck {
+    pub name: String,
+    pub passed: bool,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationIssue {
+    pub severity: String,
+    pub description: String,
+    pub suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationResult {
+    pub id: String,
+    pub timestamp: DateTime<Utc>,
+    pub stage: VerificationStage,
+    pub status: VerificationStatus,
+    pub confidence: u8,
+    pub checks: Vec<VerificationCheck>,
+    pub issues: Vec<VerificationIssue>,
+    pub recommendations: Vec<String>,
+    pub processing_time_ms: u64,
+    pub model_used: String,
+}
+
+impl VerificationResult {
+    pub fn new(stage: VerificationStage) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            timestamp: Utc::now(),
+            stage,
+            status: VerificationStatus::Pass,
+            confidence: 0,
+            checks: Vec::new(),
+            issues: Vec::new(),
+            recommendations: Vec::new(),
+            processing_time_ms: 0,
+            model_used: "gemini-3-flash-preview".to_string(),
+        }
+    }
 }

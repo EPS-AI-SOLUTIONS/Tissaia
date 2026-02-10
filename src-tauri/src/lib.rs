@@ -48,6 +48,10 @@ pub fn run() {
             commands::save_settings,
             commands::detect_photos,
             commands::crop_photos,
+            // Verification Agent (Gemini 3 Flash)
+            commands::verify_restoration,
+            commands::verify_detection,
+            commands::verify_crop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tissaia AI");

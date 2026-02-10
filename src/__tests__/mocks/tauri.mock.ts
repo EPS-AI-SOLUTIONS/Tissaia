@@ -81,6 +81,7 @@ export const mockSettings = {
   auto_save: true,
   output_quality: 85,
   preferred_provider: null,
+  verification_enabled: true,
 };
 
 export const mockOllamaModels = [

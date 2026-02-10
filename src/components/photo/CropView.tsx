@@ -12,10 +12,16 @@ import { toast } from 'sonner';
 import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from '../../hooks/api/mocks';
 import type { BoundingBox, RestorationResult } from '../../hooks/api/types';
 import { useCropPhotos, useDetectPhotos } from '../../hooks/api/useCrop';
-import { delay, safeInvoke } from '../../hooks/api/utils';
+import {
+  useVerifyCrop,
+  useVerifyDetection,
+  useVerifyRestoration,
+} from '../../hooks/api/useVerification';
+import { delay, fileToBase64, safeInvoke } from '../../hooks/api/utils';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
 import { isTauri } from '../../utils/tauri';
+import VerificationBadge from '../ui/VerificationBadge';
 
 // ============================================
 // BOUNDING BOX OVERLAY
@@ -110,6 +116,11 @@ export default function CropView() {
 
   const detectMutation = useDetectPhotos();
   const cropMutation = useCropPhotos();
+  const verifyDetectionMutation = useVerifyDetection();
+  const verifyCropMutation = useVerifyCrop();
+  const verifyRestorationMutation = useVerifyRestoration();
+  const setVerificationResult = usePhotoStore((s) => s.setVerificationResult);
+  const verificationResults = usePhotoStore((s) => s.verificationResults);
   const hasDetected = useRef(false);
   const pipelineCancelledRef = useRef(false);
 
@@ -138,6 +149,18 @@ export default function CropView() {
         setBoxes(result.bounding_boxes);
         setDetectionResult(result);
         toast.success(`Wykryto ${result.bounding_boxes.length} zdjęć`);
+
+        // Fire-and-forget: verify detection
+        fileToBase64(currentPhoto.file).then(({ base64, mimeType }) => {
+          verifyDetectionMutation
+            .mutateAsync({
+              imageBase64: base64,
+              mimeType,
+              boundingBoxes: result.bounding_boxes,
+            })
+            .then((vr) => setVerificationResult('detection', vr))
+            .catch(() => {});
+        });
       } else {
         toast.info('Nie wykryto oddzielnych zdjęć — traktowane jako jedno');
         setBoxes([{ x: 0, y: 0, width: 1000, height: 1000, confidence: 1.0, label: 'full scan' }]);
@@ -152,6 +175,7 @@ export default function CropView() {
       setIsLoading(false);
       setProgressMessage('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPhoto, detectMutation, setIsLoading, setProgressMessage, setDetectionResult]);
 
   // Auto-detect on mount
@@ -225,6 +249,27 @@ export default function CropView() {
 
         if (pipelineCancelledRef.current) return;
         setPipelineResult(croppedPhoto.id, restorationResult);
+
+        // Fire-and-forget: verify crop quality
+        verifyCropMutation
+          .mutateAsync({
+            croppedBase64: croppedPhoto.image_base64,
+            mimeType: croppedPhoto.mime_type,
+            cropIndex: i,
+          })
+          .then((vr) => setVerificationResult(`crop_${croppedPhoto.id}`, vr))
+          .catch(() => {});
+
+        // Fire-and-forget: verify restoration quality
+        verifyRestorationMutation
+          .mutateAsync({
+            originalBase64: croppedPhoto.image_base64,
+            restoredBase64: restorationResult.restored_image,
+            mimeType: croppedPhoto.mime_type,
+          })
+          .then((vr) => setVerificationResult(`restoration_${croppedPhoto.id}`, vr))
+          .catch(() => {});
+
         toast.success(`Zdjęcie ${i + 1} przetworzone`);
       }
 
@@ -314,10 +359,18 @@ export default function CropView() {
               )}
             </div>
 
-            {/* Box count */}
+            {/* Box count + verification */}
             {!isDetecting && (
-              <div className="mt-4 text-sm text-matrix-text-dim">
-                Kliknij X na ramce, aby ją usunąć. Wykryte zdjęcia: {boxes.length}
+              <div className="mt-4 space-y-2">
+                <div className="text-sm text-matrix-text-dim">
+                  Kliknij X na ramce, aby ją usunąć. Wykryte zdjęcia: {boxes.length}
+                </div>
+                {(verifyDetectionMutation.isPending || verificationResults['detection']) && (
+                  <VerificationBadge
+                    result={verificationResults['detection'] ?? null}
+                    isLoading={verifyDetectionMutation.isPending}
+                  />
+                )}
               </div>
             )}
           </div>

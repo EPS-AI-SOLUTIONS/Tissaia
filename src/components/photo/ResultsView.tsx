@@ -10,10 +10,11 @@ import { CheckCircle, Clock, Download, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useViewTheme } from '../../hooks';
-import type { CroppedPhoto, RestorationResult } from '../../hooks/api/types';
+import type { CroppedPhoto, RestorationResult, VerificationResult } from '../../hooks/api/types';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
 import PhotoPreview from '../ui/PhotoPreview';
+import VerificationBadge from '../ui/VerificationBadge';
 
 // ============================================
 // SINGLE RESULT CARD
@@ -25,9 +26,18 @@ interface ResultCardProps {
   restoration: RestorationResult;
   croppedPhoto?: CroppedPhoto;
   theme: ReturnType<typeof useViewTheme>;
+  cropVerification?: VerificationResult | null;
+  restorationVerification?: VerificationResult | null;
 }
 
-function ResultCard({ index, total, restoration, theme }: ResultCardProps) {
+function ResultCard({
+  index,
+  total,
+  restoration,
+  theme,
+  cropVerification,
+  restorationVerification,
+}: ResultCardProps) {
   const handleDownload = () => {
     if (!restoration.restored_image) {
       toast.error('Brak zdjęcia do pobrania');
@@ -109,6 +119,14 @@ function ResultCard({ index, total, restoration, theme }: ResultCardProps) {
           ))}
         </div>
       )}
+
+      {/* Verification badges */}
+      {(cropVerification || restorationVerification) && (
+        <div className="space-y-2">
+          {cropVerification && <VerificationBadge result={cropVerification} />}
+          {restorationVerification && <VerificationBadge result={restorationVerification} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,6 +143,8 @@ export default function ResultsView() {
   const rawCroppedPhotos = usePhotoStore((s) => s.croppedPhotos);
   const croppedPhotos = rawCroppedPhotos as CroppedPhoto[];
   const theme = useViewTheme();
+
+  const verificationResults = usePhotoStore((s) => s.verificationResults);
 
   // Legacy single result
   const legacyResult = usePhotoStore((s) => s.restorationResult as RestorationResult | undefined);
@@ -154,6 +174,7 @@ export default function ResultsView() {
       restorationResult: null,
     });
     usePhotoStore.getState().clearPipelineResults();
+    usePhotoStore.getState().clearVerificationResults();
     setCurrentView('upload');
   };
 
@@ -283,6 +304,13 @@ export default function ResultsView() {
                 </div>
               </div>
             )}
+
+            {/* Verification badge (legacy single photo) */}
+            {verificationResults['restoration_single'] && (
+              <div className="mt-6">
+                <VerificationBadge result={verificationResults['restoration_single']} />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -341,6 +369,8 @@ export default function ResultsView() {
                 restoration={entry.restoration as RestorationResult}
                 croppedPhoto={cropped}
                 theme={theme}
+                cropVerification={verificationResults[`crop_${photoId}`] ?? null}
+                restorationVerification={verificationResults[`restoration_${photoId}`] ?? null}
               />
             );
           })}

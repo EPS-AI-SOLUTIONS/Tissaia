@@ -1,4 +1,7 @@
-use crate::models::{BoundingBox, DetectionResult, RestorationResult, AiModel};
+use crate::models::{
+    AiModel, BoundingBox, DetectionResult, RestorationResult,
+    VerificationCheck, VerificationIssue, VerificationResult, VerificationStage, VerificationStatus,
+};
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
 use reqwest::Client;
@@ -473,6 +476,309 @@ Return ONLY valid JSON in this exact format:
         debug!("Detection response: {}", text);
 
         self.parse_detection_response(text, "google")
+    }
+
+    // ========== Verification Agent (Gemini 3 Flash) ==========
+
+    async fn call_gemini_flash_verification(
+        &self,
+        api_key: &str,
+        prompt: &str,
+        image_base64: &str,
+        mime_type: &str,
+    ) -> Result<serde_json::Value> {
+        let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+
+        let body = json!({
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": image_base64
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json"
+            }
+        });
+
+        let response = self.client.post(url)
+            .header("x-goog-api-key", api_key)
+            .json(&body)
+            .send().await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            return Err(anyhow!("Gemini Flash verification error: {}", error_text));
+        }
+
+        let data: serde_json::Value = response.json().await?;
+        let text = data["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Invalid verification response format"))?;
+
+        let clean = text.trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+
+        serde_json::from_str(clean)
+            .map_err(|e| anyhow!("Verification JSON parse error: {}", e))
+    }
+
+    async fn call_gemini_flash_two_images(
+        &self,
+        api_key: &str,
+        prompt: &str,
+        image1_base64: &str,
+        image2_base64: &str,
+        mime_type: &str,
+    ) -> Result<serde_json::Value> {
+        let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+
+        let body = json!({
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": image1_base64
+                        }
+                    },
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": image2_base64
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json"
+            }
+        });
+
+        let response = self.client.post(url)
+            .header("x-goog-api-key", api_key)
+            .json(&body)
+            .send().await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            return Err(anyhow!("Gemini Flash verification error: {}", error_text));
+        }
+
+        let data: serde_json::Value = response.json().await?;
+        let text = data["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Invalid verification response format"))?;
+
+        let clean = text.trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+
+        serde_json::from_str(clean)
+            .map_err(|e| anyhow!("Verification JSON parse error: {}", e))
+    }
+
+    pub async fn verify_restoration(
+        &self,
+        api_key: &str,
+        original_base64: &str,
+        restored_base64: &str,
+        mime_type: &str,
+    ) -> Result<VerificationResult> {
+        info!("=== VERIFY RESTORATION (Gemini Flash) ===");
+        let start = std::time::Instant::now();
+
+        let prompt = r#"You are a QA verification agent for photo restoration.
+Compare these two images: the FIRST is the original damaged photo, the SECOND is the AI-restored version.
+
+Evaluate the restoration quality:
+1. IDENTITY PRESERVATION: Are faces, body proportions, and key features identical?
+2. ARTIFACT DETECTION: Any AI hallucinations, distortions, blurring, or unnatural elements?
+3. DAMAGE REPAIR: Were scratches, stains, tears, fading properly addressed?
+4. COLOR QUALITY: Are colors natural and consistent? No banding or posterization?
+5. SHARPNESS: Is the restored image appropriately sharp without over-sharpening?
+6. COMPLETENESS: Was the entire image restored (no missed areas)?
+
+Return ONLY valid JSON:
+{
+    "status": "pass" | "warning" | "fail",
+    "confidence": 0-100,
+    "checks": [
+        {"name": "identity_preservation", "passed": true, "detail": "explanation"},
+        {"name": "artifact_detection", "passed": true, "detail": "explanation"},
+        {"name": "damage_repair", "passed": true, "detail": "explanation"},
+        {"name": "color_quality", "passed": true, "detail": "explanation"},
+        {"name": "sharpness", "passed": true, "detail": "explanation"},
+        {"name": "completeness", "passed": true, "detail": "explanation"}
+    ],
+    "issues": [
+        {"severity": "critical|warning|info", "description": "what is wrong", "suggestion": "how to fix"}
+    ],
+    "recommendations": ["suggestion 1"]
+}"#;
+
+        let parsed = self.call_gemini_flash_two_images(
+            api_key, prompt, original_base64, restored_base64, mime_type,
+        ).await?;
+
+        let mut result = VerificationResult::new(VerificationStage::Restoration);
+        result.processing_time_ms = start.elapsed().as_millis() as u64;
+        Self::populate_verification_result(&mut result, &parsed);
+        Ok(result)
+    }
+
+    pub async fn verify_detection(
+        &self,
+        api_key: &str,
+        image_base64: &str,
+        mime_type: &str,
+        bounding_boxes: &[BoundingBox],
+    ) -> Result<VerificationResult> {
+        info!("=== VERIFY DETECTION (Gemini Flash) ===");
+        let start = std::time::Instant::now();
+
+        let boxes_json = serde_json::to_string(bounding_boxes)
+            .unwrap_or_else(|_| "[]".to_string());
+
+        let prompt = format!(r#"You are a QA verification agent for photo boundary detection.
+This image is a flatbed scanner scan. An AI detected these bounding boxes (normalized 0-1000 coordinates):
+{}
+
+Evaluate the detection quality:
+1. BOUNDARY ACCURACY: Do the boxes tightly fit the actual photos?
+2. OVERLAP CHECK: Do any boxes significantly overlap (>10% area)?
+3. SIZE REASONABLENESS: Are all boxes of reasonable size (not too tiny or too large)?
+4. WITHIN BOUNDS: Are all coordinates within 0-1000 range?
+5. COMPLETENESS: Are all visible photos detected? Any missed?
+6. FALSE POSITIVES: Any boxes covering scanner bed or non-photo areas?
+
+Return ONLY valid JSON:
+{{
+    "status": "pass" | "warning" | "fail",
+    "confidence": 0-100,
+    "checks": [
+        {{"name": "boundary_accuracy", "passed": true, "detail": "explanation"}},
+        {{"name": "overlap_check", "passed": true, "detail": "explanation"}},
+        {{"name": "size_reasonableness", "passed": true, "detail": "explanation"}},
+        {{"name": "within_bounds", "passed": true, "detail": "explanation"}},
+        {{"name": "completeness", "passed": true, "detail": "explanation"}},
+        {{"name": "false_positives", "passed": true, "detail": "explanation"}}
+    ],
+    "issues": [
+        {{"severity": "critical|warning|info", "description": "what is wrong", "suggestion": "how to fix"}}
+    ],
+    "recommendations": ["suggestion 1"]
+}}"#, boxes_json);
+
+        let parsed = self.call_gemini_flash_verification(
+            api_key, &prompt, image_base64, mime_type,
+        ).await?;
+
+        let mut result = VerificationResult::new(VerificationStage::Detection);
+        result.processing_time_ms = start.elapsed().as_millis() as u64;
+        Self::populate_verification_result(&mut result, &parsed);
+        Ok(result)
+    }
+
+    pub async fn verify_crop(
+        &self,
+        api_key: &str,
+        cropped_base64: &str,
+        mime_type: &str,
+        crop_index: usize,
+    ) -> Result<VerificationResult> {
+        info!("=== VERIFY CROP {} (Gemini Flash) ===", crop_index);
+        let start = std::time::Instant::now();
+
+        let prompt = format!(r#"You are a QA verification agent for photo cropping.
+This is cropped image #{} extracted from a scanner scan.
+
+Evaluate the crop quality:
+1. PHOTO CONTENT: Does this contain an actual photograph (not scanner bed, blank area, or artifact)?
+2. CROP TIGHTNESS: Is the photo properly framed without excessive scanner-bed margins?
+3. ORIENTATION: Is the photo correctly oriented (not rotated or skewed)?
+4. IMAGE QUALITY: Is the cropped content clear enough for restoration?
+
+Return ONLY valid JSON:
+{{
+    "status": "pass" | "warning" | "fail",
+    "confidence": 0-100,
+    "checks": [
+        {{"name": "photo_content", "passed": true, "detail": "explanation"}},
+        {{"name": "crop_tightness", "passed": true, "detail": "explanation"}},
+        {{"name": "orientation", "passed": true, "detail": "explanation"}},
+        {{"name": "image_quality", "passed": true, "detail": "explanation"}}
+    ],
+    "issues": [
+        {{"severity": "critical|warning|info", "description": "what is wrong", "suggestion": "how to fix"}}
+    ],
+    "recommendations": ["suggestion 1"]
+}}"#, crop_index + 1);
+
+        let parsed = self.call_gemini_flash_verification(
+            api_key, &prompt, cropped_base64, mime_type,
+        ).await?;
+
+        let mut result = VerificationResult::new(VerificationStage::Crop);
+        result.processing_time_ms = start.elapsed().as_millis() as u64;
+        Self::populate_verification_result(&mut result, &parsed);
+        Ok(result)
+    }
+
+    fn populate_verification_result(result: &mut VerificationResult, parsed: &serde_json::Value) {
+        // Status
+        match parsed["status"].as_str().unwrap_or("pass") {
+            "fail" => result.status = VerificationStatus::Fail,
+            "warning" => result.status = VerificationStatus::Warning,
+            _ => result.status = VerificationStatus::Pass,
+        }
+
+        // Confidence
+        result.confidence = parsed["confidence"].as_u64().unwrap_or(50).min(100) as u8;
+
+        // Checks
+        if let Some(checks) = parsed["checks"].as_array() {
+            result.checks = checks.iter().filter_map(|c| {
+                Some(VerificationCheck {
+                    name: c["name"].as_str()?.to_string(),
+                    passed: c["passed"].as_bool().unwrap_or(true),
+                    detail: c["detail"].as_str().map(|s| s.to_string()),
+                })
+            }).collect();
+        }
+
+        // Issues
+        if let Some(issues) = parsed["issues"].as_array() {
+            result.issues = issues.iter().filter_map(|i| {
+                Some(VerificationIssue {
+                    severity: i["severity"].as_str().unwrap_or("info").to_string(),
+                    description: i["description"].as_str()?.to_string(),
+                    suggestion: i["suggestion"].as_str().map(|s| s.to_string()),
+                })
+            }).collect();
+        }
+
+        // Recommendations
+        if let Some(recs) = parsed["recommendations"].as_array() {
+            result.recommendations = recs.iter()
+                .filter_map(|r| r.as_str().map(|s| s.to_string()))
+                .collect();
+        }
     }
 
     fn parse_detection_response(&self, text: &str, provider: &str) -> Result<DetectionResult> {

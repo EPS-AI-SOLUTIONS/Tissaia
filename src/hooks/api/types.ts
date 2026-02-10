@@ -27,7 +27,7 @@ export interface RestorationResult {
 // HISTORY TYPES
 // ============================================
 
-export type OperationType = 'restoration' | 'photoseparation';
+export type OperationType = 'restoration' | 'photoseparation' | 'verification';
 
 export interface HistoryEntry {
   id: string;
@@ -89,6 +89,7 @@ export interface AppSettings {
   auto_save: boolean;
   output_quality: number;
   preferred_provider: string | null;
+  verification_enabled: boolean;
 }
 
 // ============================================
@@ -130,4 +131,36 @@ export interface CropResult {
   original_filename: string;
   photos: CroppedPhoto[];
   processing_time_ms: number;
+}
+
+// ============================================
+// VERIFICATION AGENT TYPES
+// ============================================
+
+export type VerificationStatus = 'pass' | 'warning' | 'fail';
+export type VerificationStage = 'restoration' | 'detection' | 'crop';
+
+export interface VerificationCheck {
+  name: string;
+  passed: boolean;
+  detail: string | null;
+}
+
+export interface VerificationIssue {
+  severity: string;
+  description: string;
+  suggestion: string | null;
+}
+
+export interface VerificationResult {
+  id: string;
+  timestamp: string;
+  stage: VerificationStage;
+  status: VerificationStatus;
+  confidence: number;
+  checks: VerificationCheck[];
+  issues: VerificationIssue[];
+  recommendations: string[];
+  processing_time_ms: number;
+  model_used: string;
 }

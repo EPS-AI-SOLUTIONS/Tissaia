@@ -12,6 +12,8 @@ import type {
   HealthResponse,
   ProviderStatus,
   RestorationResult,
+  VerificationResult,
+  VerificationStage,
 } from './types';
 
 // ============================================
@@ -45,6 +47,7 @@ export const mockSettings: AppSettings = {
   auto_save: true,
   output_quality: 85,
   preferred_provider: null,
+  verification_enabled: true,
 };
 
 // ============================================
@@ -102,7 +105,48 @@ export const mockDetectionResult: DetectionResult = {
 // DEFAULT VALUES
 // ============================================
 
+// ============================================
+// VERIFICATION
+// ============================================
+
+export function createMockVerificationResult(stage: VerificationStage): VerificationResult {
+  const checks = [
+    { name: 'quality_check', passed: true, detail: 'Image quality is acceptable' },
+    { name: 'content_check', passed: true, detail: 'Content verified successfully' },
+    { name: 'artifact_check', passed: true, detail: 'No artifacts detected' },
+    { name: 'completeness_check', passed: Math.random() > 0.3, detail: null },
+  ];
+
+  const allPassed = checks.every((c) => c.passed);
+
+  return {
+    id: `mock-verify-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    stage,
+    status: allPassed ? 'pass' : 'warning',
+    confidence: allPassed ? 92 : 68,
+    checks,
+    issues: allPassed
+      ? []
+      : [
+          {
+            severity: 'low',
+            description: 'Minor quality concern detected',
+            suggestion: 'Consider re-running with higher quality settings',
+          },
+        ],
+    recommendations: allPassed ? ['Result looks good'] : ['Review output manually'],
+    processing_time_ms: 450 + Math.floor(Math.random() * 300),
+    model_used: 'mock-gemini-3-flash',
+  };
+}
+
+// ============================================
+// DEFAULT VALUES
+// ============================================
+
 export const DEFAULT_MODEL_ID = 'gemini-2.0-flash-exp';
 export const MOCK_RESTORATION_DELAY = 3000;
 export const MOCK_DETECTION_DELAY = 1500;
 export const MOCK_CROP_DELAY = 1000;
+export const MOCK_VERIFICATION_DELAY = 800;
