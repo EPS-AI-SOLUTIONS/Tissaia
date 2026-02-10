@@ -6,10 +6,10 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '../../utils/tauri';
+import { MOCK_ANALYSIS_DELAY, mockAnalysisResult } from './mocks';
 import { queryKeys } from './queryKeys';
-import { safeInvoke, fileToBase64, delay } from './utils';
-import { mockAnalysisResult, MOCK_ANALYSIS_DELAY } from './mocks';
 import type { AnalysisResult } from './types';
+import { delay, fileToBase64, safeInvoke } from './utils';
 
 // ============================================
 // ANALYZE IMAGE
@@ -27,7 +27,7 @@ export function useAnalyzeImage() {
 
   return useMutation({
     mutationFn: async ({ file }: AnalyzeImageParams): Promise<AnalysisResult> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         // Mock analysis for browser/test mode
         await delay(MOCK_ANALYSIS_DELAY);
         return {

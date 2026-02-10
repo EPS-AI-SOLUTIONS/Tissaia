@@ -4,22 +4,23 @@
  * ========================
  * Unit tests for AI model selection hooks.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
 
-// Mock isTauri
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock isTauri as a function
 vi.mock('../../../utils/tauri', () => ({
-  isTauri: false,
+  isTauri: () => false,
 }));
 
 // Import hooks after mocking
 import {
   useAvailableModels,
+  useProvidersStatus,
   useSelectedModel,
   useSetSelectedModel,
-  useProvidersStatus,
 } from '../../../hooks/useApi';
 
 // Create wrapper with QueryClient
@@ -34,11 +35,7 @@ function createWrapper() {
   });
 
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return React.createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      children
-    );
+    return React.createElement(QueryClientProvider, { client: queryClient }, children);
   };
 }
 

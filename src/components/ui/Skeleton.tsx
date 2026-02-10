@@ -4,8 +4,9 @@
  * ===============
  * Loading placeholder component.
  */
-import { motion } from 'framer-motion';
+
 import clsx from 'clsx';
+import { motion } from 'framer-motion';
 
 interface SkeletonProps {
   className?: string;
@@ -52,12 +53,7 @@ export default function Skeleton({
 
   return (
     <div
-      className={clsx(
-        baseStyles,
-        variantStyles[variant],
-        animationStyles[animation],
-        className
-      )}
+      className={clsx(baseStyles, variantStyles[variant], animationStyles[animation], className)}
     />
   );
 }
@@ -65,9 +61,9 @@ export default function Skeleton({
 // Preset components
 Skeleton.Text = ({ className, lines = 1 }: { className?: string; lines?: number }) => (
   <div className={clsx('space-y-2', className)}>
-    {Array.from({ length: lines }).map((_, i) => (
+    {Array.from({ length: lines }, (_, i) => `line-${i}`).map((lineKey, i) => (
       <Skeleton
-        key={i}
+        key={lineKey}
         variant="text"
         className={i === lines - 1 && lines > 1 ? 'w-3/4' : 'w-full'}
       />

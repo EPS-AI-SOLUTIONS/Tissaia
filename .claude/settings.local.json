@@ -28,7 +28,8 @@
       "mcp__kapture__list_tabs",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "WebFetch(domain:localhost)"
     ]
   }
 }

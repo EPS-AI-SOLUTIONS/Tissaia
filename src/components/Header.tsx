@@ -4,11 +4,12 @@
  * =================================
  * Top bar with status and breadcrumbs.
  */
+
+import { ChevronRight, Home, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Home, ChevronRight } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAppStore } from '../store/useAppStore';
 import { useViewTheme } from '../hooks';
+import { useViewStore } from '../store/useViewStore';
 
 interface HeaderProps {
   status?: string;
@@ -28,7 +29,8 @@ const viewLabels: Record<string, { pl: string; en: string }> = {
 export default function Header({ status }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const { resolvedTheme } = useTheme();
-  const { currentView, setCurrentView } = useAppStore();
+  const currentView = useViewStore((s) => s.currentView);
+  const setCurrentView = useViewStore((s) => s.setCurrentView);
   const theme = useViewTheme();
 
   const currentLabel = viewLabels[currentView]?.[i18n.language as 'pl' | 'en'] || currentView;
@@ -39,21 +41,22 @@ export default function Header({ status }: HeaderProps) {
         {/* Breadcrumbs */}
         <div className="flex items-center gap-2 text-sm">
           <button
+            type="button"
             onClick={() => setCurrentView('upload')}
-            className={`flex items-center gap-1 ${theme.textMuted} hover:${theme.textAccent} transition-colors`}
+            className={`flex items-center gap-1 ${theme.textMuted} ${theme.isLight ? 'hover:text-emerald-600' : 'hover:text-matrix-accent'} transition-colors`}
           >
             <Home size={14} />
             <span className="font-medium">Tissaia</span>
           </button>
           <ChevronRight size={14} className={theme.textMuted} />
-          <span className={theme.textAccent + ' font-medium'}>{currentLabel}</span>
+          <span className={`${theme.textAccent} font-medium`}>{currentLabel}</span>
 
           {/* Status indicator */}
           <div className="flex items-center gap-2 ml-4">
             <span
               className={`w-2 h-2 rounded-full ${
                 status === 'healthy'
-                  ? (resolvedTheme === 'light' ? 'bg-emerald-500' : 'bg-matrix-accent') + ' animate-pulse'
+                  ? `${resolvedTheme === 'light' ? 'bg-emerald-500' : 'bg-matrix-accent'} animate-pulse`
                   : 'bg-yellow-500'
               }`}
             />
@@ -67,6 +70,7 @@ export default function Header({ status }: HeaderProps) {
         <div className="flex items-center gap-2">
           {/* Refresh */}
           <button
+            type="button"
             onClick={() => window.location.reload()}
             className={`p-2 rounded-lg ${theme.btnGhost}`}
             title="Refresh"

@@ -6,12 +6,12 @@
  */
 import {
   createContext,
+  type ReactNode,
   useContext,
   useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from 'react';
 import type { Theme } from '../types';
 
@@ -56,7 +56,7 @@ export function ThemeProvider({
       return () => mediaQuery.removeEventListener('change', callback);
     },
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-    () => true // Server snapshot defaults to dark
+    () => true, // Server snapshot defaults to dark
   );
 
   // Compute resolved theme without useState
@@ -78,10 +78,7 @@ export function ThemeProvider({
     // Update meta theme-color
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute(
-        'content',
-        resolvedTheme === 'dark' ? '#0a0f0d' : '#ffffff'
-      );
+      metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#0a0f0d' : '#ffffff');
     }
   }, [resolvedTheme]);
 
@@ -91,7 +88,7 @@ export function ThemeProvider({
   };
 
   const toggleTheme = () => {
-    setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
+    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (

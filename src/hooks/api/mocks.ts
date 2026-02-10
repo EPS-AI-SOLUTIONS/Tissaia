@@ -5,13 +5,14 @@
  * Mock responses for browser mode (when Tauri is not available).
  */
 import type {
+  AiModel,
+  AnalysisResult,
+  AppSettings,
+  AvailableModel,
+  DetectionResult,
   HealthResponse,
   ProviderStatus,
-  AppSettings,
-  AnalysisResult,
   RestorationResult,
-  AiModel,
-  AvailableModel,
 } from './types';
 
 // ============================================
@@ -107,9 +108,29 @@ export const mockAvailableModel: AvailableModel = {
 };
 
 // ============================================
+// PHOTO DETECTION / CROP
+// ============================================
+
+export const mockDetectionResult: DetectionResult = {
+  id: 'mock-detection-id',
+  timestamp: new Date().toISOString(),
+  photo_count: 3,
+  bounding_boxes: [
+    { x: 30, y: 30, width: 440, height: 440, confidence: 0.95, label: 'photo 1' },
+    { x: 530, y: 30, width: 440, height: 440, confidence: 0.92, label: 'photo 2' },
+    { x: 30, y: 530, width: 440, height: 440, confidence: 0.88, label: 'photo 3' },
+  ],
+  provider_used: 'mock-provider',
+  scan_width: 0,
+  scan_height: 0,
+};
+
+// ============================================
 // DEFAULT VALUES
 // ============================================
 
 export const DEFAULT_MODEL_ID = 'gemini-2.0-flash-exp';
 export const MOCK_ANALYSIS_DELAY = 2000;
 export const MOCK_RESTORATION_DELAY = 3000;
+export const MOCK_DETECTION_DELAY = 1500;
+export const MOCK_CROP_DELAY = 1000;

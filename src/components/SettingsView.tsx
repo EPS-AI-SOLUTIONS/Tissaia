@@ -4,14 +4,15 @@
  * =============================
  * Application settings and preferences.
  */
+
+import { Eye, EyeOff, Key, Monitor, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, Monitor, Key, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAppStore } from '../store/useAppStore';
-import { useSetApiKey, useProvidersStatus, useOllamaModels } from '../hooks/useApi';
-import type { Theme, Language } from '../types';
+import { useOllamaModels, useProvidersStatus, useSetApiKey } from '../hooks/useApi';
+import { useSettingsStore } from '../store/useSettingsStore';
+import type { Language, Theme } from '../types';
 
 // ============================================
 // SETTING ROW
@@ -28,9 +29,7 @@ function SettingRow({ label, description, children }: SettingRowProps) {
     <div className="flex items-center justify-between py-4 border-b border-matrix-border last:border-0">
       <div>
         <div className="font-medium">{label}</div>
-        {description && (
-          <div className="text-sm text-matrix-text-dim mt-1">{description}</div>
-        )}
+        {description && <div className="text-sm text-matrix-text-dim mt-1">{description}</div>}
       </div>
       <div>{children}</div>
     </div>
@@ -44,14 +43,18 @@ function SettingRow({ label, description, children }: SettingRowProps) {
 function OllamaModelsList() {
   const { data: models, isLoading, isError } = useOllamaModels();
 
-  if (isLoading) return <div className="text-sm text-matrix-text-dim">≈adowanie modeli...</div>;
+  if (isLoading) return <div className="text-sm text-matrix-text-dim">≈Åadowanie modeli...</div>;
   if (isError) return <div className="text-sm text-red-400">B≈ÇƒÖd po≈ÇƒÖczenia z Ollama</div>;
-  if (!models || models.length === 0) return <div className="text-sm text-yellow-400">Brak dostƒôpnych modeli</div>;
+  if (!models || models.length === 0)
+    return <div className="text-sm text-yellow-400">Brak dostƒôpnych modeli</div>;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
       {models.map((model) => (
-        <div key={model.id} className="p-3 bg-matrix-bg-secondary rounded-lg border border-matrix-border flex items-center justify-between">
+        <div
+          key={model.id}
+          className="p-3 bg-matrix-bg-secondary rounded-lg border border-matrix-border flex items-center justify-between"
+        >
           <span className="font-mono text-sm">{model.name}</span>
           <span className="text-xs bg-matrix-accent/10 text-matrix-accent px-2 py-0.5 rounded">
             {model.provider}
@@ -65,7 +68,9 @@ function OllamaModelsList() {
 export default function SettingsView() {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { settings, updateSettings, setLanguage } = useAppStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
   const { data: providers } = useProvidersStatus();
   const setApiKeyMutation = useSetApiKey();
 
@@ -79,8 +84,8 @@ export default function SettingsView() {
   ];
 
   const languages: { value: Language; label: string; flag: string }[] = [
-    { value: 'pl', label: 'Polski', flag: '????' },
-    { value: 'en', label: 'English', flag: '????' },
+    { value: 'pl', label: 'Polski', flag: '\u{1F1F5}\u{1F1F1}' },
+    { value: 'en', label: 'English', flag: '\u{1F1EC}\u{1F1E7}' },
   ];
 
   const handleLanguageChange = (lang: Language) => {
@@ -98,7 +103,7 @@ export default function SettingsView() {
       toast.success(`Klucz ${provider} zapisany`);
       setApiKeys((prev) => ({ ...prev, [provider]: '' }));
     } catch {
-      toast.error('B≥πd zapisywania klucza');
+      toast.error('B≈ÇƒÖd zapisywania klucza');
     }
   };
 
@@ -122,7 +127,7 @@ export default function SettingsView() {
       <div className="space-y-6">
         {/* Appearance */}
         <div className="glass-panel p-4">
-          <h3 className="font-semibold mb-4">Wyglπd</h3>
+          <h3 className="font-semibold mb-4">WyglƒÖd</h3>
 
           {/* Theme */}
           <SettingRow label={t('settings.theme')} description="Wybierz motyw kolorystyczny">
@@ -130,12 +135,14 @@ export default function SettingsView() {
               {themes.map((themeOption) => (
                 <button
                   key={themeOption.value}
+                  type="button"
                   onClick={() => setTheme(themeOption.value)}
                   className={`
                     flex items-center gap-2 px-3 py-2 rounded-lg transition-all
-                    ${theme === themeOption.value
-                      ? 'bg-matrix-accent/20 text-matrix-accent border border-matrix-accent/50'
-                      : 'bg-matrix-bg-secondary text-matrix-text-dim hover:text-matrix-text'
+                    ${
+                      theme === themeOption.value
+                        ? 'bg-matrix-accent/20 text-matrix-accent border border-matrix-accent/50'
+                        : 'bg-matrix-bg-secondary text-matrix-text-dim hover:text-matrix-text'
                     }
                   `}
                 >
@@ -147,17 +154,19 @@ export default function SettingsView() {
           </SettingRow>
 
           {/* Language */}
-          <SettingRow label={t('settings.language')} description="ZmieÒ jÍzyk interfejsu">
+          <SettingRow label={t('settings.language')} description="Zmie≈Ñ jƒôzyk interfejsu">
             <div className="flex gap-2">
               {languages.map((lang) => (
                 <button
                   key={lang.value}
+                  type="button"
                   onClick={() => handleLanguageChange(lang.value)}
                   className={`
                     flex items-center gap-2 px-3 py-2 rounded-lg transition-all
-                    ${settings.language === lang.value
-                      ? 'bg-matrix-accent/20 text-matrix-accent border border-matrix-accent/50'
-                      : 'bg-matrix-bg-secondary text-matrix-text-dim hover:text-matrix-text'
+                    ${
+                      settings.language === lang.value
+                        ? 'bg-matrix-accent/20 text-matrix-accent border border-matrix-accent/50'
+                        : 'bg-matrix-bg-secondary text-matrix-text-dim hover:text-matrix-text'
                     }
                   `}
                 >
@@ -176,9 +185,10 @@ export default function SettingsView() {
           {/* Auto-analyze */}
           <SettingRow
             label={t('settings.autoAnalyze')}
-            description="Automatycznie analizuj zdjÍcia po wgraniu"
+            description="Automatycznie analizuj zdjƒôcia po wgraniu"
           >
             <button
+              type="button"
               onClick={() => updateSettings({ autoAnalyze: !settings.autoAnalyze })}
               className={`
                 w-12 h-6 rounded-full transition-colors flex items-center
@@ -192,9 +202,10 @@ export default function SettingsView() {
           {/* Preserve originals */}
           <SettingRow
             label={t('settings.preserveOriginals')}
-            description="Zachowaj oryginalne zdjÍcia w historii"
+            description="Zachowaj oryginalne zdjƒôcia w historii"
           >
             <button
+              type="button"
               onClick={() => updateSettings({ preserveOriginals: !settings.preserveOriginals })}
               className={`
                 w-12 h-6 rounded-full transition-colors flex items-center
@@ -206,7 +217,7 @@ export default function SettingsView() {
           </SettingRow>
         </div>
 
-                {/* Ollama Models */}
+        {/* Ollama Models */}
         <div className="glass-panel p-4">
           <div className="flex items-center gap-2 mb-4">
             <Monitor className="text-matrix-accent" size={20} />
@@ -228,7 +239,8 @@ export default function SettingsView() {
           </div>
 
           <p className="text-sm text-matrix-text-dim mb-4">
-            Wprowadü klucze API dla providerÛw AI. Klucze moøna teø ustawiÊ przez zmienne úrodowiskowe.
+            Wprowad≈∫ klucze API dla provider√≥w AI. Klucze mo≈ºna te≈º ustawiƒá przez zmienne
+            ≈õrodowiskowe.
           </p>
 
           <div className="space-y-4">
@@ -239,7 +251,7 @@ export default function SettingsView() {
               return (
                 <div key={config.name} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">{config.label}</label>
+                    <div className="text-sm font-medium">{config.label}</div>
                     <span
                       className={`text-xs px-2 py-0.5 rounded ${
                         isAvailable
@@ -277,6 +289,7 @@ export default function SettingsView() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleSaveApiKey(config.name)}
                       disabled={!apiKeys[config.name] || setApiKeyMutation.isPending}
                       className="px-4 py-2 bg-matrix-accent/20 text-matrix-accent border border-matrix-accent/50 rounded-lg hover:bg-matrix-accent/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
@@ -319,7 +332,7 @@ export default function SettingsView() {
 
           <div className="mt-4 pt-4 border-t border-matrix-border">
             <p className="text-xs text-matrix-text-dim text-center italic">
-              "Precyzja to nie uprzejmoúÊ, to wymÛg." ó Tissaia de Vries
+              "Precyzja to nie uprzejmo≈õƒá, to wym√≥g." ‚Äî Tissaia de Vries
             </p>
           </div>
         </div>
@@ -327,5 +340,3 @@ export default function SettingsView() {
     </div>
   );
 }
-
-

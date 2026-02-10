@@ -2,7 +2,11 @@
 /**
  * API Types
  * =========
- * TypeScript interfaces matching Rust backend structs.
+ * TypeScript interfaces matching Rust backend structs (snake_case).
+ * These represent the wire format from the Rust/Tauri backend.
+ *
+ * NOTE: UI-facing types live in src/types.ts (camelCase).
+ * These API types use snake_case to match Rust serde serialization.
  */
 
 // ============================================
@@ -45,7 +49,7 @@ export interface RestorationResult {
 // HISTORY TYPES
 // ============================================
 
-export type OperationType = 'analysis' | 'restoration';
+export type OperationType = 'analysis' | 'restoration' | 'photoseparation';
 
 export interface HistoryEntry {
   id: string;
@@ -98,7 +102,7 @@ export interface AvailableModel {
 }
 
 // ============================================
-// SETTINGS TYPES
+// SETTINGS TYPES (API/Backend format)
 // ============================================
 
 export interface AppSettings {
@@ -107,6 +111,47 @@ export interface AppSettings {
   auto_save: boolean;
   output_quality: number;
   preferred_provider: string | null;
+}
+
+// ============================================
+// PHOTO SEPARATION / CROP TYPES
+// ============================================
+
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
+  label: string | null;
+}
+
+export interface DetectionResult {
+  id: string;
+  timestamp: string;
+  photo_count: number;
+  bounding_boxes: BoundingBox[];
+  provider_used: string;
+  scan_width: number;
+  scan_height: number;
+}
+
+export interface CroppedPhoto {
+  id: string;
+  index: number;
+  image_base64: string;
+  mime_type: string;
+  width: number;
+  height: number;
+  source_box: BoundingBox;
+}
+
+export interface CropResult {
+  id: string;
+  timestamp: string;
+  original_filename: string;
+  photos: CroppedPhoto[];
+  processing_time_ms: number;
 }
 
 // ============================================

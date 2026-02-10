@@ -3,8 +3,9 @@
  * ====================================
  * Tests for the animated analysis progress bar component.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, waitFor, act } from '@testing-library/react';
+
+import { screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AnalysisProgressBar from '../../../components/ui/AnalysisProgressBar';
 import { renderWithProviders } from '../../utils/renderWithProviders';
 
@@ -40,10 +41,9 @@ describe('AnalysisProgressBar', () => {
 
   describe('rendering', () => {
     it('renders nothing when not analyzing', () => {
-      const { container } = renderWithProviders(
-        <AnalysisProgressBar isAnalyzing={false} />,
-        { locale: 'en' }
-      );
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={false} />, {
+        locale: 'en',
+      });
       expect(container.firstChild).toBeNull();
     });
 
@@ -61,10 +61,13 @@ describe('AnalysisProgressBar', () => {
     });
 
     it('shows estimated time', () => {
-      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'en' });
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Check for any time-related element
-      const hasTimeElement = container.textContent?.includes('~') && container.textContent?.includes('s');
+      const hasTimeElement =
+        container.textContent?.includes('~') && container.textContent?.includes('s');
       expect(hasTimeElement).toBe(true);
     });
   });
@@ -74,12 +77,15 @@ describe('AnalysisProgressBar', () => {
       renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'en' });
 
       // There should be 6 step dots (Check icons or step icons)
-      const stepContainer = screen.getByText(/Photo Analysis|Analiza zdjęcia/i).parentElement?.parentElement;
+      const stepContainer = screen.getByText(/Photo Analysis|Analiza zdjęcia/i).parentElement
+        ?.parentElement;
       expect(stepContainer).toBeInTheDocument();
     });
 
     it('displays step indicators', () => {
-      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'en' });
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Check that step dots are rendered (6 steps)
       const stepDots = container.querySelectorAll('.w-10.h-10.rounded-full');
@@ -96,10 +102,13 @@ describe('AnalysisProgressBar', () => {
     });
 
     it('displays first step message', () => {
-      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'en' });
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // First step message should contain text related to analysis steps
-      const hasStepContent = container.textContent?.includes('...') || container.textContent?.includes('progress');
+      const hasStepContent =
+        container.textContent?.includes('...') || container.textContent?.includes('progress');
       expect(hasStepContent).toBe(true);
     });
   });
@@ -110,20 +119,18 @@ describe('AnalysisProgressBar', () => {
 
       // Should not throw when onComplete is provided
       expect(() => {
-        renderWithProviders(
-          <AnalysisProgressBar isAnalyzing={true} onComplete={onComplete} />,
-          { locale: 'en' }
-        );
+        renderWithProviders(<AnalysisProgressBar isAnalyzing={true} onComplete={onComplete} />, {
+          locale: 'en',
+        });
       }).not.toThrow();
     });
   });
 
   describe('state changes', () => {
     it('can be stopped and restarted', () => {
-      const { rerender } = renderWithProviders(
-        <AnalysisProgressBar isAnalyzing={true} />,
-        { locale: 'en' }
-      );
+      const { rerender } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Should be visible
       expect(screen.getByText(/Photo Analysis|Analiza zdjęcia/i)).toBeInTheDocument();
@@ -141,7 +148,9 @@ describe('AnalysisProgressBar', () => {
 
   describe('localization', () => {
     it('renders in Polish', () => {
-      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'pl' });
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'pl',
+      });
 
       expect(screen.getByText('Analiza zdjęcia')).toBeInTheDocument();
       // Check for time indicator (~Xs)
@@ -149,7 +158,9 @@ describe('AnalysisProgressBar', () => {
     });
 
     it('renders in English', () => {
-      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, { locale: 'en' });
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       expect(screen.getByText('Photo Analysis')).toBeInTheDocument();
       // Check for time indicator (~Xs)
@@ -159,10 +170,9 @@ describe('AnalysisProgressBar', () => {
 
   describe('visual elements', () => {
     it('renders skeleton placeholders', () => {
-      const { container } = renderWithProviders(
-        <AnalysisProgressBar isAnalyzing={true} />,
-        { locale: 'en' }
-      );
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Should have skeleton loading bars
       const skeletonBars = container.querySelectorAll('.bg-matrix-border.rounded');
@@ -170,10 +180,9 @@ describe('AnalysisProgressBar', () => {
     });
 
     it('renders progress bar track', () => {
-      const { container } = renderWithProviders(
-        <AnalysisProgressBar isAnalyzing={true} />,
-        { locale: 'en' }
-      );
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Should have progress bar container
       const progressTrack = container.querySelector('.bg-matrix-bg-primary.rounded-full');
@@ -181,10 +190,9 @@ describe('AnalysisProgressBar', () => {
     });
 
     it('renders step connector lines', () => {
-      const { container } = renderWithProviders(
-        <AnalysisProgressBar isAnalyzing={true} />,
-        { locale: 'en' }
-      );
+      const { container } = renderWithProviders(<AnalysisProgressBar isAnalyzing={true} />, {
+        locale: 'en',
+      });
 
       // Should have connector lines between steps
       const connectorLines = container.querySelectorAll('.flex-1.h-0\\.5');

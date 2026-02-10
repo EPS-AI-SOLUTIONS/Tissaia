@@ -4,15 +4,21 @@
  * =================
  * Drag & drop photo upload with preview - Regis Style.
  */
+
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ImagePlus, Sparkles, Upload, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Upload, X, ImagePlus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAppStore } from '../../store/useAppStore';
 import { useViewTheme } from '../../hooks';
+import { fileToDataUrl } from '../../hooks/api/utils';
+import { usePhotoStore } from '../../store/usePhotoStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { useViewStore } from '../../store/useViewStore';
 import type { PhotoFile } from '../../types';
+import { formatBytes, generateId } from '../../utils';
+import PhotoPreview from '../ui/PhotoPreview';
 
 // ============================================
 // CONSTANTS
@@ -33,80 +39,77 @@ const AUTO_NAVIGATE_DELAY_MS = 500;
 
 export default function UploadView() {
   const { t } = useTranslation();
-  const { photos, addPhoto, removePhoto, clearPhotos, setCurrentView, settings } = useAppStore();
+  const setCurrentView = useViewStore((s) => s.setCurrentView);
+  const photos = usePhotoStore((s) => s.photos);
+  const addPhoto = usePhotoStore((s) => s.addPhoto);
+  const removePhoto = usePhotoStore((s) => s.removePhoto);
+  const clearPhotos = usePhotoStore((s) => s.clearPhotos);
+  const settings = useSettingsStore((s) => s.settings);
   const [isDragActive, setIsDragActive] = useState(false);
   const shouldReduceMotion = useReducedMotion();
   const theme = useViewTheme();
 
-  // Note: No cleanup needed - we now use base64 data URLs instead of blob URLs
-  // which don't require manual revocation
-
-  // Convert file to base64 data URL for Tauri compatibility
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   // Handle file drop
+  // Uses Promise.all to await all async file processing before auto-navigating.
+  // Previously used forEach(async ...) which fire-and-forgot each callback,
+  // causing auto-navigation to fire before photos were added to the store.
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      acceptedFiles.forEach(async (file) => {
-        // Validate size
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error(`${file.name}: ${t('upload.maxSize')}`);
-          return;
-        }
+    async (acceptedFiles: File[]) => {
+      const results = await Promise.all(
+        acceptedFiles.map(async (file): Promise<PhotoFile | null> => {
+          // Validate size
+          if (file.size > MAX_FILE_SIZE) {
+            toast.error(`${file.name}: ${t('upload.maxSize')}`);
+            return null;
+          }
 
-        // Create preview as base64 data URL (works in Tauri WebView)
-        const preview = await fileToDataUrl(file);
+          // Create preview as base64 data URL (works in Tauri WebView)
+          const preview = await fileToDataUrl(file);
 
-        // Add to store
-        const photoFile: PhotoFile = {
-          id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-          file,
-          preview,
-          mimeType: file.type,
-          size: file.size,
-          name: file.name,
-          uploadedAt: new Date(),
-        };
+          const photoFile: PhotoFile = {
+            id: generateId('photo'),
+            file,
+            preview,
+            mimeType: file.type,
+            size: file.size,
+            name: file.name,
+            uploadedAt: new Date().toISOString(),
+          };
 
+          return photoFile;
+        }),
+      );
+
+      // Add all valid photos to the store after they're all processed
+      const validPhotos = results.filter((p): p is PhotoFile => p !== null);
+      validPhotos.forEach((photoFile) => {
         addPhoto(photoFile);
-        toast.success(t('upload.added', { name: file.name }));
+        toast.success(t('upload.added', { name: photoFile.name }));
       });
 
-      // Auto-navigate if auto-analyze is enabled
-      if (settings.autoAnalyze && acceptedFiles.length > 0) {
-        setTimeout(() => setCurrentView('analyze'), AUTO_NAVIGATE_DELAY_MS);
+      // Auto-navigate AFTER all photos are added to the store
+      if (settings.autoAnalyze && validPhotos.length > 0) {
+        setTimeout(() => setCurrentView('crop'), AUTO_NAVIGATE_DELAY_MS);
       }
     },
-    [addPhoto, settings.autoAnalyze, setCurrentView, t]
+    [addPhoto, settings.autoAnalyze, setCurrentView, t],
   );
 
-  // Handle photo removal with proper cleanup
+  // Handle photo removal
+  // Note: preview is a base64 data URL (from fileToDataUrl), not an object URL,
+  // so URL.revokeObjectURL is not needed (it's a no-op on data URLs).
   const handleRemovePhoto = useCallback(
     (photo: PhotoFile) => {
-      if (photo.preview) {
-        URL.revokeObjectURL(photo.preview);
-      }
       removePhoto(photo.id);
     },
-    [removePhoto]
+    [removePhoto],
   );
 
-  // Handle clear all with proper cleanup
+  // Handle clear all
+  // Note: previews are base64 data URLs, no object URL cleanup needed.
   const handleClearAll = useCallback(() => {
-    photos.forEach((photo) => {
-      if (photo.preview) {
-        URL.revokeObjectURL(photo.preview);
-      }
-    });
     clearPhotos();
-  }, [photos, clearPhotos]);
+  }, [clearPhotos]);
 
   // Dropzone config
   const { getRootProps, getInputProps, isDragReject } = useDropzone({
@@ -117,17 +120,8 @@ export default function UploadView() {
     onDragLeave: () => setIsDragActive(false),
   });
 
-  // Format file size
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   // Animation variants (respect reduced motion)
-  const scaleVariant = shouldReduceMotion
-    ? {}
-    : { scale: isDragActive ? 1.05 : 1 };
+  const scaleVariant = shouldReduceMotion ? {} : { scale: isDragActive ? 1.05 : 1 };
 
   const itemVariants = shouldReduceMotion
     ? { initial: {}, animate: {}, exit: {} }
@@ -166,20 +160,16 @@ export default function UploadView() {
       >
         <input {...getInputProps()} />
 
-        <motion.div
-          animate={scaleVariant}
-          className="text-center"
-        >
-          <div className={`w-24 h-24 mx-auto mb-6 rounded-2xl ${theme.accentBg} flex items-center justify-center`}>
-            <Upload
-              size={48}
-              className={isDragActive ? theme.iconAccent : theme.iconMuted}
-            />
+        <motion.div animate={scaleVariant} className="text-center">
+          <div
+            className={`w-24 h-24 mx-auto mb-6 rounded-2xl ${theme.accentBg} flex items-center justify-center`}
+          >
+            <Upload size={48} className={isDragActive ? theme.iconAccent : theme.iconMuted} />
           </div>
 
           <h3 className={`text-xl font-semibold mb-2 ${theme.title}`}>{t('upload.dragdrop')}</h3>
           <p className={`${theme.textMuted} mb-4`}>{t('upload.or')}</p>
-          <button className={theme.btnPrimary + ' px-6 py-2.5 font-medium'}>
+          <button type="button" className={`${theme.btnPrimary} px-6 py-2.5 font-medium`}>
             {t('upload.browse')}
           </button>
 
@@ -204,6 +194,7 @@ export default function UploadView() {
                 {t('upload.uploadedPhotos', { count: photos.length })}
               </h3>
               <button
+                type="button"
                 onClick={handleClearAll}
                 className={`text-sm ${theme.textMuted} hover:text-red-400 transition-colors`}
               >
@@ -213,23 +204,19 @@ export default function UploadView() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {photos.map((photo) => (
-                <motion.div
-                  key={photo.id}
-                  {...itemVariants}
-                  className="relative group"
-                >
-                  <div className={`${theme.card} aspect-square overflow-hidden`}>
-                    <img
-                      src={photo.preview}
-                      alt={photo.name}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${theme.isLight ? 'from-black/30' : 'from-black/60'} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  </div>
+                <motion.div key={photo.id} {...itemVariants} className="relative group">
+                  <PhotoPreview
+                    src={photo.preview}
+                    alt={photo.name}
+                    variant="card"
+                    hoverScale
+                    gradientOverlay
+                    className={theme.card}
+                  />
 
                   {/* Remove button */}
                   <button
+                    type="button"
                     onClick={() => handleRemovePhoto(photo)}
                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"
                     aria-label={t('common.delete')}
@@ -238,12 +225,8 @@ export default function UploadView() {
                   </button>
 
                   {/* File info */}
-                  <div className={`mt-2 text-xs ${theme.textMuted} truncate`}>
-                    {photo.name}
-                  </div>
-                  <div className={`text-xs ${theme.textMuted}`}>
-                    {formatSize(photo.size)}
-                  </div>
+                  <div className={`mt-2 text-xs ${theme.textMuted} truncate`}>{photo.name}</div>
+                  <div className={`text-xs ${theme.textMuted}`}>{formatBytes(photo.size)}</div>
                 </motion.div>
               ))}
             </div>
@@ -251,8 +234,9 @@ export default function UploadView() {
             {/* Action buttons */}
             <div className="mt-6 flex gap-4">
               <button
-                onClick={() => setCurrentView('analyze')}
-                className={theme.btnPrimary + ' px-6 py-2.5 font-medium flex items-center gap-2'}
+                type="button"
+                onClick={() => setCurrentView('crop')}
+                className={`${theme.btnPrimary} px-6 py-2.5 font-medium flex items-center gap-2`}
               >
                 <Sparkles size={16} />
                 {t('upload.analyzePhotos')} →

@@ -4,14 +4,17 @@
  * =======================================
  * Configure and run photo restoration.
  */
+
+import { Play, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAppStore } from '../../store/useAppStore';
-import { useRestoreImage, type AnalysisResult } from '../../hooks/useApi';
-import ProgressBar from '../ui/ProgressBar';
+import { type AnalysisResult, useRestoreImage } from '../../hooks/useApi';
+import { usePhotoStore } from '../../store/usePhotoStore';
+import { useViewStore } from '../../store/useViewStore';
 import ModelSelector from '../ui/ModelSelector';
+import PhotoPreview from '../ui/PhotoPreview';
+import ProgressBar from '../ui/ProgressBar';
 
 // ============================================
 // RESTORE VIEW COMPONENT
@@ -19,15 +22,15 @@ import ModelSelector from '../ui/ModelSelector';
 
 export default function RestoreView() {
   const { t } = useTranslation();
-  const {
-    photos,
-    setCurrentView,
-    setIsLoading,
-    setProgressMessage,
-  } = useAppStore();
+  const setCurrentView = useViewStore((s) => s.setCurrentView);
+  const setIsLoading = useViewStore((s) => s.setIsLoading);
+  const setProgressMessage = useViewStore((s) => s.setProgressMessage);
+  const photos = usePhotoStore((s) => s.photos);
 
   // Get currentAnalysis from store (set by AnalyzeView)
-  const currentAnalysis = useAppStore((state) => (state as { currentAnalysis?: AnalysisResult }).currentAnalysis);
+  const currentAnalysis = usePhotoStore(
+    (state) => state.currentAnalysis as AnalysisResult | undefined,
+  );
 
   const restoreMutation = useRestoreImage();
   const [isRestoring, setIsRestoring] = useState(false);
@@ -51,7 +54,7 @@ export default function RestoreView() {
       });
 
       // Store result and navigate to results view
-      useAppStore.setState({
+      usePhotoStore.setState({
         restorationResult: result,
       });
 
@@ -71,10 +74,7 @@ export default function RestoreView() {
     return (
       <div className="p-6 text-center text-matrix-text-dim">
         <p>Brak zdjęcia do restauracji</p>
-        <button
-          onClick={() => setCurrentView('upload')}
-          className="btn-glow mt-4"
-        >
+        <button type="button" onClick={() => setCurrentView('upload')} className="btn-glow mt-4">
           Wgraj zdjęcie
         </button>
       </div>
@@ -90,9 +90,7 @@ export default function RestoreView() {
             <Sparkles size={28} />
             {t('restore.title')}
           </h2>
-          <p className="text-matrix-text-dim mt-1">
-            Gotowy do restauracji: {currentPhoto.name}
-          </p>
+          <p className="text-matrix-text-dim mt-1">Gotowy do restauracji: {currentPhoto.name}</p>
         </div>
         <ModelSelector />
       </div>
@@ -105,22 +103,19 @@ export default function RestoreView() {
             <div className="glass-panel p-6 text-center">
               <Sparkles size={48} className="mx-auto mb-4 text-matrix-accent animate-pulse" />
               <p className="text-matrix-text-dim">AI pracuje nad Twoim zdjęciem...</p>
-              <p className="text-sm text-matrix-text-dim mt-2">
-                To może potrwać kilka sekund
-              </p>
+              <p className="text-sm text-matrix-text-dim mt-2">To może potrwać kilka sekund</p>
             </div>
           </div>
         ) : (
           <div className="glass-panel p-6 space-y-6">
             {/* Preview */}
             <div className="flex gap-6">
-              <div className="w-64 h-64 rounded-xl overflow-hidden">
-                <img
-                  src={currentPhoto.preview}
-                  alt={currentPhoto.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <PhotoPreview
+                src={currentPhoto.preview}
+                alt={currentPhoto.name}
+                variant="large"
+                size="w-64 h-64"
+              />
 
               <div className="flex-1 space-y-4">
                 <h3 className="font-semibold text-lg">{currentPhoto.name}</h3>
@@ -135,8 +130,8 @@ export default function RestoreView() {
 
                 <div className="p-4 rounded-lg bg-matrix-accent/10 border border-matrix-accent/30">
                   <p className="text-sm">
-                    AI automatycznie zastosuje najlepsze techniki restauracji
-                    na podstawie przeprowadzonej analizy.
+                    AI automatycznie zastosuje najlepsze techniki restauracji na podstawie
+                    przeprowadzonej analizy.
                   </p>
                 </div>
               </div>
@@ -147,8 +142,8 @@ export default function RestoreView() {
               <div>
                 <h4 className="font-semibold mb-3">Zalecane działania:</h4>
                 <ul className="space-y-2">
-                  {currentAnalysis.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm text-matrix-text-dim">
+                  {currentAnalysis.recommendations.map((rec) => (
+                    <li key={rec} className="flex items-start gap-2 text-sm text-matrix-text-dim">
                       <span className="text-matrix-accent">✓</span>
                       {rec}
                     </li>
@@ -163,14 +158,12 @@ export default function RestoreView() {
       {/* Actions */}
       {!isRestoring && (
         <div className="mt-6 flex justify-between">
-          <button
-            onClick={() => setCurrentView('analyze')}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={() => setCurrentView('analyze')} className="btn-secondary">
             ← Wróć do analizy
           </button>
 
           <button
+            type="button"
             onClick={handleRestore}
             disabled={!currentAnalysis}
             className="btn-glow flex items-center gap-2"

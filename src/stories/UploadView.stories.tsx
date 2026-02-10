@@ -21,7 +21,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Main photo upload interface with drag-and-drop functionality and file validation.',
+        component:
+          'Main photo upload interface with drag-and-drop functionality and file validation.',
       },
     },
   },

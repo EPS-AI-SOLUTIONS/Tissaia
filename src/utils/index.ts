@@ -4,8 +4,8 @@
  * =================
  */
 
-// Tauri environment detection
-export { isTauri, safeInvoke } from './tauri';
+// Tauri environment detection (only isTauri - safeInvoke lives in hooks/api/utils)
+export { isTauri } from './tauri';
 
 /**
  * Format bytes to human-readable string
@@ -17,7 +17,7 @@ export function formatBytes(bytes: number, decimals = 1): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`;
 }
 
 /**
@@ -64,7 +64,7 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Sleep for given milliseconds
+ * Promise-based delay/sleep
  */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -123,7 +123,7 @@ export function createObjectURL(file: File): { url: string; revoke: () => void }
 export function downloadFile(
   data: string | Blob,
   filename: string,
-  mimeType = 'application/octet-stream'
+  mimeType = 'application/octet-stream',
 ): void {
   const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -141,7 +141,7 @@ export function downloadFile(
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout | null = null;
 
@@ -160,7 +160,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  */
 export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
-  limit: number
+  limit: number,
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
 
@@ -182,3 +182,22 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
   return classes.filter(Boolean).join(' ');
 }
 
+// =============================================================================
+// SCHEMA UTILITIES
+// =============================================================================
+
+export {
+  createFileSchema,
+  createFormDataFromSchema,
+  type FileSchemaOptions,
+  // File schemas
+  fileSchema,
+  imageFileSchema,
+  optionalImageFileSchema,
+  // Form utilities
+  toFormData,
+  type UploadFormData,
+  uploadFormSchema,
+  // Zod re-export
+  z,
+} from './schemas';

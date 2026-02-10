@@ -4,9 +4,10 @@
  * ===================================
  * Photo restoration dashboard powered by Gemini Vision.
  */
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 
 import App from './App';
@@ -42,28 +43,17 @@ createRoot(rootElement).render(
         <Toaster
           position="bottom-right"
           toastOptions={{
-            className: 'bg-matrix-glass backdrop-blur-md border border-matrix-border text-matrix-text',
+            className:
+              'bg-matrix-glass backdrop-blur-md border border-matrix-border text-matrix-text',
             duration: 4000,
             style: {
               background: 'rgba(10, 31, 10, 0.9)',
               color: '#c0ffc0',
               border: '1px solid #1a3a1a',
             },
-            success: {
-              iconTheme: {
-                primary: '#00ff41',
-                secondary: '#0a0f0d',
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ff4141',
-                secondary: '#0a0f0d',
-              },
-            },
           }}
         />
       </ThemeProvider>
     </QueryClientProvider>
-  </StrictMode>
+  </StrictMode>,
 );

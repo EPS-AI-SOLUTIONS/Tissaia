@@ -4,26 +4,36 @@
  * ===========================
  * Tests for restoration results view.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ResultsView from '../../../components/photo/ResultsView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
-
-// Import toast for assertions
-import toast from 'sonner';
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
@@ -41,7 +51,7 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -50,10 +60,11 @@ function createMockPhoto() {
   return {
     id: 'photo-1',
     name: 'test.jpg',
+    file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
     preview: 'data:image/jpeg;base64,originaltest',
     size: 1024,
     mimeType: 'image/jpeg',
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
   };
 }
 
@@ -74,7 +85,7 @@ describe('ResultsView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -99,7 +110,7 @@ describe('ResultsView', () => {
       const uploadButton = screen.getByRole('button', { name: /wgraj zdjęcie/i });
       fireEvent.click(uploadButton);
 
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
   });
 
@@ -110,8 +121,8 @@ describe('ResultsView', () => {
   describe('with result', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -138,8 +149,8 @@ describe('ResultsView', () => {
   describe('comparison view', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -174,8 +185,8 @@ describe('ResultsView', () => {
   describe('statistics', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -210,8 +221,8 @@ describe('ResultsView', () => {
   describe('improvements list', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -235,8 +246,8 @@ describe('ResultsView', () => {
   describe('actions', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -256,8 +267,8 @@ describe('ResultsView', () => {
       const newPhotoButton = screen.getByText('Nowe zdjęcie');
       fireEvent.click(newPhotoButton);
 
-      expect(useAppStore.getState().currentView).toBe('upload');
-      expect(useAppStore.getState().photos).toHaveLength(0);
+      expect(useViewStore.getState().currentView).toBe('upload');
+      expect(usePhotoStore.getState().photos).toHaveLength(0);
     });
   });
 
@@ -268,8 +279,8 @@ describe('ResultsView', () => {
   describe('download', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ restorationResult: createMockResult() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
     });
 
@@ -291,8 +302,8 @@ describe('ResultsView', () => {
     it('handles result without photo - shows restored image', () => {
       // Reset store completely first
       act(() => {
-        useAppStore.getState().reset();
-        useAppStore.setState({ restorationResult: createMockResult() });
+        resetStores();
+        usePhotoStore.setState({ restorationResult: createMockResult() });
       });
 
       renderWithProviders(<ResultsView />);

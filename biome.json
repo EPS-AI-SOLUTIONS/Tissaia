@@ -29,6 +29,11 @@
       "jsxQuoteStyle": "double"
     }
   },
+  "css": {
+    "parser": { "cssModules": true },
+    "formatter": { "enabled": false },
+    "linter": { "enabled": false }
+  },
   "files": {
     "includes": [
       "**",
@@ -36,7 +41,8 @@
       "!**/dist",
       "!**/coverage",
       "!**/storybook-static",
-      "!**/src-tauri/target"
+      "!**/src-tauri/target",
+      "!**/*.css"
     ]
   }
 }

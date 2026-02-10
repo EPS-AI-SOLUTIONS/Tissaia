@@ -39,13 +39,9 @@ interface UseHotkeyOptions {
 export const useHotkey = (
   hotkey: string,
   callback: () => void,
-  options: UseHotkeyOptions = {}
+  options: UseHotkeyOptions = {},
 ): void => {
-  const {
-    preventDefault = true,
-    stopPropagation = false,
-    enabled = true,
-  } = options;
+  const { preventDefault = true, stopPropagation = false, enabled = true } = options;
 
   useEffect(() => {
     if (!enabled) return;

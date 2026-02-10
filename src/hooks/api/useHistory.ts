@@ -4,12 +4,12 @@
  * =============
  * Hooks for processing history management.
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { isTauri } from '../../utils/tauri';
 import { queryKeys } from './queryKeys';
-import { safeInvoke } from './utils';
 import type { HistoryEntry } from './types';
+import { safeInvoke } from './utils';
 
 // ============================================
 // FETCH HISTORY
@@ -22,7 +22,7 @@ export function useHistory() {
   return useQuery({
     queryKey: queryKeys.history,
     queryFn: async (): Promise<HistoryEntry[]> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         return [];
       }
       return safeInvoke<HistoryEntry[]>('get_history');
@@ -42,7 +42,7 @@ export function useClearHistory() {
 
   return useMutation({
     mutationFn: async (): Promise<void> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         toast.error('Czyszczenie historii wymaga aplikacji Tauri');
         throw new Error('Tauri is required for clearing history');
       }

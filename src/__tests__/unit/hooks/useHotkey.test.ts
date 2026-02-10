@@ -3,9 +3,10 @@
  * useHotkey Hook Tests
  * ====================
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { renderHook } from '@testing-library/react';
-import { useHotkey, isHotkeyPressed } from '../../../hooks/useHotkey';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isHotkeyPressed, useHotkey } from '../../../hooks/useHotkey';
 
 // Helper to create keyboard events
 function createKeyboardEvent(
@@ -15,7 +16,7 @@ function createKeyboardEvent(
     shiftKey?: boolean;
     altKey?: boolean;
     metaKey?: boolean;
-  } = {}
+  } = {},
 ): KeyboardEvent {
   return new KeyboardEvent('keydown', {
     key,

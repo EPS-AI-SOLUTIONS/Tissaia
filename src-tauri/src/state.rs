@@ -1,6 +1,7 @@
 ﻿use crate::models::{AppSettings, HistoryEntry, ProviderStatus};
+use reqwest::Client;
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub struct AppState {
     pub history: Vec<HistoryEntry>,
@@ -8,6 +9,7 @@ pub struct AppState {
     pub api_keys: HashMap<String, String>,
     pub providers: Vec<ProviderStatus>,
     pub start_time: Instant,
+    client: Client,
 }
 
 impl AppState {
@@ -15,12 +17,19 @@ impl AppState {
         let api_keys = Self::load_api_keys();
         let providers = Self::init_providers(&api_keys);
 
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .unwrap_or_default();
+
         Self {
             history: Vec::new(),
             settings: AppSettings::default(),
             api_keys,
             providers,
             start_time: Instant::now(),
+            client,
         }
     }
 
@@ -49,24 +58,24 @@ impl AppState {
         fn init_providers(api_keys: &HashMap<String, String>) -> Vec<ProviderStatus> {
         vec![
             ProviderStatus {
+                name: "google".to_string(),
+                enabled: true,
+                available: api_keys.contains_key("google"),
+                priority: 1, // Primary (Gemini 3 Pro)
+                last_error: None,
+            },
+            ProviderStatus {
                 name: "anthropic".to_string(),
                 enabled: true,
                 available: api_keys.contains_key("anthropic"),
-                priority: 1, // High Quality (Claude 3.5 Sonnet)
+                priority: 2, // Fallback 1 (Claude)
                 last_error: None,
             },
             ProviderStatus {
                 name: "openai".to_string(),
                 enabled: true,
                 available: api_keys.contains_key("openai"),
-                priority: 2, // High Quality (GPT-4o)
-                last_error: None,
-            },
-            ProviderStatus {
-                name: "google".to_string(),
-                enabled: true,
-                available: api_keys.contains_key("google"),
-                priority: 3, // High Speed/Context
+                priority: 3, // Fallback 2 (GPT-4o)
                 last_error: None,
             },
             ProviderStatus {
@@ -86,7 +95,7 @@ impl AppState {
             ProviderStatus {
                 name: "ollama".to_string(),
                 enabled: true,
-                available: true,
+                available: false, // Don't assume Ollama is running; verify first
                 priority: 6,
                 last_error: None,
             },
@@ -108,7 +117,18 @@ impl AppState {
         }
     }
 
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+
     pub fn get_available_provider(&self) -> Option<&str> {
+        // Check preferred provider first
+        if let Some(ref preferred) = self.settings.preferred_provider {
+            if let Some(provider) = self.providers.iter().find(|p| &p.name == preferred && p.enabled && p.available) {
+                return Some(&provider.name);
+            }
+        }
+        // Fallback to priority-based selection
         self.providers
             .iter()
             .filter(|p| p.enabled && p.available)

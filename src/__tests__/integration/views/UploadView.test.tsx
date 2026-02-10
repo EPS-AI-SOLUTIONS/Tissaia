@@ -4,23 +4,36 @@
  * ==========================
  * Tests for photo upload view with drag & drop functionality.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import UploadView from '../../../components/photo/UploadView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
@@ -38,18 +51,8 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
-}
-
-// Create mock File
-function createMockFile(
-  name: string = 'test.jpg',
-  size: number = 1024,
-  type: string = 'image/jpeg'
-): File {
-  const blob = new Blob([''], { type });
-  return new File([blob], name, { type });
 }
 
 describe('UploadView', () => {
@@ -57,7 +60,7 @@ describe('UploadView', () => {
     vi.clearAllMocks();
     // Reset store state
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -126,13 +129,14 @@ describe('UploadView', () => {
     it('shows uploaded photos section when photos exist', () => {
       // Add a mock photo to store
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -143,13 +147,14 @@ describe('UploadView', () => {
 
     it('displays remove all button when photos exist', () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -159,13 +164,14 @@ describe('UploadView', () => {
 
     it('displays analyze button when photos exist', () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -179,15 +185,16 @@ describe('UploadView', () => {
   // ============================================
 
   describe('navigation', () => {
-    it('navigates to analyze view when analyze button clicked', () => {
+    it('navigates to crop view when analyze button clicked', () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -196,7 +203,7 @@ describe('UploadView', () => {
       const analyzeButton = screen.getByText(/analyze/i);
       fireEvent.click(analyzeButton);
 
-      expect(useAppStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('crop');
     });
   });
 
@@ -207,13 +214,14 @@ describe('UploadView', () => {
   describe('photo removal', () => {
     it('removes photo when remove button clicked', async () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -227,40 +235,42 @@ describe('UploadView', () => {
       fireEvent.click(removeButtons[0]);
 
       // Photo should be removed from store
-      expect(useAppStore.getState().photos).toHaveLength(0);
+      expect(usePhotoStore.getState().photos).toHaveLength(0);
     });
 
     it('clears all photos when remove all clicked', async () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test1.jpg',
+          file: new File([''], 'test1.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test1',
           size: 1024,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-2',
           name: 'test2.jpg',
+          file: new File([''], 'test2.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test2',
           size: 2048,
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
       renderWithProviders(<UploadView />, 'en');
 
       // Both photos should be visible
-      expect(useAppStore.getState().photos).toHaveLength(2);
+      expect(usePhotoStore.getState().photos).toHaveLength(2);
 
       // Click remove all
       const removeAllButton = screen.getByText(/remove all/i);
       fireEvent.click(removeAllButton);
 
       // All photos should be removed
-      expect(useAppStore.getState().photos).toHaveLength(0);
+      expect(usePhotoStore.getState().photos).toHaveLength(0);
     });
   });
 
@@ -271,13 +281,14 @@ describe('UploadView', () => {
   describe('file size formatting', () => {
     it('displays file size in KB for small files', () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 2048, // 2 KB
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 
@@ -287,13 +298,14 @@ describe('UploadView', () => {
 
     it('displays file size in MB for larger files', () => {
       act(() => {
-        useAppStore.getState().addPhoto({
+        usePhotoStore.getState().addPhoto({
           id: 'photo-1',
           name: 'test.jpg',
+          file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
           preview: 'data:image/jpeg;base64,test',
           size: 5 * 1024 * 1024, // 5 MB
           mimeType: 'image/jpeg',
-          uploadedAt: new Date(),
+          uploadedAt: new Date().toISOString(),
         });
       });
 

@@ -4,15 +4,25 @@
  * ===========================
  * Tests for restoration history view.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HistoryView from '../../../components/HistoryView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock useApi hooks
 const mockHistory = [
@@ -53,12 +63,15 @@ vi.mock('../../../hooks/useApi', () => ({
 }));
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Mock window.confirm
 const mockConfirm = vi.fn(() => true);
@@ -80,7 +93,7 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -89,7 +102,7 @@ describe('HistoryView', () => {
     vi.clearAllMocks();
     mockConfirm.mockReturnValue(true);
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 

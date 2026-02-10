@@ -9,7 +9,8 @@ const meta: Meta<typeof Skeleton> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Skeleton loader component for content placeholders. Uses matrix-themed styling.',
+        component:
+          'Skeleton loader component for content placeholders. Uses matrix-themed styling.',
       },
     },
   },
@@ -66,6 +67,7 @@ export const PhotoGrid: Story = {
   render: () => (
     <div className="grid grid-cols-3 gap-4 w-96">
       {[...Array(6)].map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder items
         <Skeleton key={i} className="aspect-square rounded-lg" />
       ))}
     </div>

@@ -33,7 +33,13 @@ export const mockProvidersResponse = [
   { name: 'openai', enabled: true, available: false, priority: 3, last_error: 'No API key' },
   { name: 'mistral', enabled: false, available: false, priority: 4, last_error: null },
   { name: 'groq', enabled: false, available: false, priority: 5, last_error: null },
-  { name: 'ollama', enabled: true, available: false, priority: 6, last_error: 'Connection refused' },
+  {
+    name: 'ollama',
+    enabled: true,
+    available: false,
+    priority: 6,
+    last_error: 'Connection refused',
+  },
 ];
 
 export const mockAnalysisResult = {
@@ -41,7 +47,12 @@ export const mockAnalysisResult = {
   timestamp: new Date().toISOString(),
   damage_score: 45,
   damage_types: [
-    { name: 'scratches', severity: 'medium', description: 'Minor scratches visible', area_percentage: 15 },
+    {
+      name: 'scratches',
+      severity: 'medium',
+      description: 'Minor scratches visible',
+      area_percentage: 15,
+    },
     { name: 'fading', severity: 'low', description: 'Slight color fading', area_percentage: 25 },
   ],
   recommendations: ['Remove scratches', 'Restore colors', 'Enhance contrast'],
@@ -99,7 +110,7 @@ export const mockOllamaModels = [
 // ============================================
 
 export function setupMockInvoke() {
-  mockInvoke.mockImplementation((command: string, args?: Record<string, unknown>) => {
+  mockInvoke.mockImplementation((command: string, _args?: Record<string, unknown>) => {
     switch (command) {
       case 'health_check':
         return Promise.resolve(mockHealthResponse);

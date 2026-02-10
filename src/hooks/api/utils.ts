@@ -7,6 +7,9 @@
 import { toast } from 'sonner';
 import { isTauri } from '../../utils/tauri';
 
+// Re-export sleep as delay for backward compatibility within API hooks
+export { sleep as delay } from '../../utils';
+
 // ============================================
 // BROWSER MODE WARNING
 // ============================================
@@ -32,13 +35,11 @@ export function resetBrowserModeWarning(): void {
 // ============================================
 
 /**
- * Safe invoke wrapper - returns mock data when not in Tauri
+ * Safe invoke wrapper - throws when not in Tauri, calls Tauri command otherwise.
+ * This is the canonical version used by all API hooks.
  */
-export async function safeInvoke<T>(
-  command: string,
-  args?: Record<string, unknown>
-): Promise<T> {
-  if (!isTauri) {
+export async function safeInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri()) {
     showBrowserModeWarning();
     throw new Error(`Tauri is required for "${command}" - running in browser mode`);
   }
@@ -72,15 +73,16 @@ export function fileToBase64(file: File): Promise<FileBase64Result> {
   });
 }
 
-// ============================================
-// DELAY UTILITY
-// ============================================
-
 /**
- * Promise-based delay for mock operations
+ * Convert a File to a full data URL string (for previews)
  */
-export function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 // ============================================

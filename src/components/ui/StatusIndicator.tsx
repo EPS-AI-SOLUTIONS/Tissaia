@@ -4,10 +4,11 @@
  * ==========================
  * Visual indicator for status states (online/offline, success/error, etc.)
  */
-import { type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+
 import { cva, type VariantProps } from 'class-variance-authority';
-import { CheckCircle, XCircle, AlertCircle, Loader2, Circle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { AlertCircle, CheckCircle, Circle, Loader2, XCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { cn } from '../../utils';
 
 // ============================================
@@ -38,7 +39,7 @@ const indicatorVariants = cva(
       status: 'idle',
       size: 'md',
     },
-  }
+  },
 );
 
 const dotVariants = cva(
@@ -65,14 +66,21 @@ const dotVariants = cva(
       status: 'idle',
       size: 'md',
     },
-  }
+  },
 );
 
 // ============================================
 // STATUS INDICATOR COMPONENT
 // ============================================
 
-export type StatusType = 'online' | 'offline' | 'warning' | 'loading' | 'idle' | 'success' | 'error';
+export type StatusType =
+  | 'online'
+  | 'offline'
+  | 'warning'
+  | 'loading'
+  | 'idle'
+  | 'success'
+  | 'error';
 
 export interface StatusIndicatorProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>,

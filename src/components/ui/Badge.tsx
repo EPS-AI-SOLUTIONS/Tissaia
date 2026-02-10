@@ -4,8 +4,9 @@
  * ===============
  * Reusable badge/tag component with variants.
  */
-import { type ReactNode } from 'react';
+
 import { cva, type VariantProps } from 'class-variance-authority';
+import type { ReactNode } from 'react';
 import { cn } from '../../utils';
 
 // ============================================
@@ -44,7 +45,7 @@ const badgeVariants = cva(
       variant: 'default',
       size: 'sm',
     },
-  }
+  },
 );
 
 // ============================================
@@ -58,14 +59,7 @@ export interface BadgeProps
   children: ReactNode;
 }
 
-export function Badge({
-  className,
-  variant,
-  size,
-  icon,
-  children,
-  ...props
-}: BadgeProps) {
+export function Badge({ className, variant, size, icon, children, ...props }: BadgeProps) {
   return (
     <span className={cn(badgeVariants({ variant, size }), className)} {...props}>
       {icon && <span className="flex-shrink-0">{icon}</span>}

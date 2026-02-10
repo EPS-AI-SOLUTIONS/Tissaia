@@ -33,8 +33,8 @@ export default function ProgressBar({
             ▶
           </motion.span>
           <span className="font-mono">{message}</span>
-          {showPercentage && !isIndeterminate && (
-            <span className="ml-auto text-matrix-accent">{Math.round(progress!)}%</span>
+          {showPercentage && !isIndeterminate && progress !== undefined && (
+            <span className="ml-auto text-matrix-accent">{Math.round(progress)}%</span>
           )}
         </div>
       )}

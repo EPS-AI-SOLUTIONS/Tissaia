@@ -57,6 +57,7 @@ pub struct HistoryEntry {
 pub enum OperationType {
     Analysis,
     Restoration,
+    PhotoSeparation,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,4 +145,49 @@ pub struct AiModel {
     pub id: String,
     pub name: String,
     pub provider: String,
+}
+
+// ============================================
+// PHOTO SEPARATION / CROP TYPES
+// ============================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoundingBox {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub confidence: f32,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectionResult {
+    pub id: String,
+    pub timestamp: DateTime<Utc>,
+    pub photo_count: usize,
+    pub bounding_boxes: Vec<BoundingBox>,
+    pub provider_used: String,
+    pub scan_width: u32,
+    pub scan_height: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CroppedPhoto {
+    pub id: String,
+    pub index: usize,
+    pub image_base64: String,
+    pub mime_type: String,
+    pub width: u32,
+    pub height: u32,
+    pub source_box: BoundingBox,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CropResult {
+    pub id: String,
+    pub timestamp: DateTime<Utc>,
+    pub original_filename: String,
+    pub photos: Vec<CroppedPhoto>,
+    pub processing_time_ms: u64,
 }

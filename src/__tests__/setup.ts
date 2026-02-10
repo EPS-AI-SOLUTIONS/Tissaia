@@ -5,7 +5,7 @@
  * Mocks and configurations for all tests.
  */
 import '@testing-library/jest-dom';
-import { vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 
 // ============================================
 // MOCK: matchMedia (for theme detection)
@@ -40,7 +40,9 @@ const localStorageMock = {
     delete localStorageStore[key];
   }),
   clear: vi.fn(() => {
-    Object.keys(localStorageStore).forEach((key) => delete localStorageStore[key]);
+    Object.keys(localStorageStore).forEach((key) => {
+      delete localStorageStore[key];
+    });
   }),
   get length() {
     return Object.keys(localStorageStore).length;
@@ -67,7 +69,9 @@ const sessionStorageMock = {
     delete sessionStorageStore[key];
   }),
   clear: vi.fn(() => {
-    Object.keys(sessionStorageStore).forEach((key) => delete sessionStorageStore[key]);
+    Object.keys(sessionStorageStore).forEach((key) => {
+      delete sessionStorageStore[key];
+    });
   }),
   get length() {
     return Object.keys(sessionStorageStore).length;
@@ -95,7 +99,7 @@ if (typeof global.ImageData === 'undefined') {
     constructor(
       dataOrWidth: Uint8ClampedArray | number,
       widthOrHeight: number,
-      heightOrUndefined?: number
+      heightOrUndefined?: number,
     ) {
       if (typeof dataOrWidth === 'number') {
         // Constructor: ImageData(width, height)
@@ -142,7 +146,7 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
 // MOCK: URL.createObjectURL / revokeObjectURL
 // ============================================
 
-URL.createObjectURL = vi.fn((blob: Blob) => `blob:mock-url-${Math.random()}`);
+URL.createObjectURL = vi.fn((_blob: Blob) => `blob:mock-url-${Math.random()}`);
 URL.revokeObjectURL = vi.fn();
 
 // ============================================
@@ -182,7 +186,7 @@ beforeEach(() => {
   sessionStorageMock.clear();
 
   // Reset Tauri mock state
-  delete (window as Record<string, unknown>).__TAURI__;
+  delete (window as unknown as Record<string, unknown>).__TAURI__;
 });
 
 afterEach(() => {
@@ -198,12 +202,12 @@ export { localStorageMock, sessionStorageMock };
 
 // Helper to enable Tauri mode in tests
 export function enableTauriMode() {
-  (window as Record<string, unknown>).__TAURI__ = {
+  (window as unknown as Record<string, unknown>).__TAURI__ = {
     convertFileSrc: vi.fn(),
   };
 }
 
 // Helper to disable Tauri mode in tests
 export function disableTauriMode() {
-  delete (window as Record<string, unknown>).__TAURI__;
+  delete (window as unknown as Record<string, unknown>).__TAURI__;
 }

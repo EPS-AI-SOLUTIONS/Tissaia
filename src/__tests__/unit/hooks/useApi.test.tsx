@@ -5,18 +5,19 @@
  * Tests for React Query hooks that interact with Tauri backend.
  * Note: These tests focus on browser mode since Tauri mocking is complex.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import React from 'react';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import type React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ============================================
 // MOCK SETUP
 // ============================================
 
-// Mock the entire tauri.ts module - browser mode (isTauri = false)
+// Mock the entire tauri.ts module - browser mode (isTauri() returns false)
 vi.mock('../../../utils/tauri', () => ({
-  isTauri: false,
+  isTauri: () => false,
   safeInvoke: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -27,35 +28,39 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 // Mock sonner
 vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
+    error: vi.fn(),
+    success: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
   return {
-    default: Object.assign(vi.fn(), {
-      error: vi.fn(),
-      success: vi.fn(),
-    }),
+    default: toastFn,
+    toast: toastFn,
   };
 });
 
 // Import after mocks are set up
 import {
-  useHealth,
-  useProvidersStatus,
-  useAnalyzeImage,
-  useRestoreImage,
-  useHistory,
-  useClearHistory,
-  useSettings,
-  useSaveSettings,
-  useSetApiKey,
-  useRestorationWorkflow,
-  useStatus,
-  useModels,
-  useDefaultModel,
-  useOllamaModels,
-  queryKeys,
   type AnalysisResult,
+  type AppSettings,
   type HealthResponse,
   type ProviderStatus,
-  type AppSettings,
+  queryKeys,
+  useAnalyzeImage,
+  useClearHistory,
+  useDefaultModel,
+  useHealth,
+  useHistory,
+  useModels,
+  useOllamaModels,
+  useProvidersStatus,
+  useRestorationWorkflow,
+  useRestoreImage,
+  useSaveSettings,
+  useSetApiKey,
+  useSettings,
+  useStatus,
 } from '../../../hooks/useApi';
 
 // ============================================
@@ -120,15 +125,6 @@ function createWrapper() {
   );
 
   return { Wrapper, queryClient };
-}
-
-// ============================================
-// HELPER: Create mock file
-// ============================================
-
-function createMockFile(name = 'test.jpg', type = 'image/jpeg', size = 1024): File {
-  const content = new Array(size).fill('a').join('');
-  return new File([content], name, { type });
 }
 
 // ============================================

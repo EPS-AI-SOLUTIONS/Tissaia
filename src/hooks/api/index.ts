@@ -5,65 +5,66 @@
  * Centralized exports for all API hooks.
  */
 
-// Types
-export type {
-  DamageType,
-  DamageSeverity,
-  AnalysisResult,
-  RestorationResult,
-  HistoryEntry,
-  OperationType,
-  ProviderStatus,
-  HealthResponse,
-  AiModel,
-  AvailableModel,
-  ModelCapability,
-  AppSettings,
-  WorkflowProgress,
-  WorkflowResult,
-} from './types';
+export type { QueryKey } from './queryKeys';
 
 // Query Keys
 export { queryKeys } from './queryKeys';
-export type { QueryKey } from './queryKeys';
-
-// Utilities
-export {
-  safeInvoke,
-  fileToBase64,
-  delay,
-  showBrowserModeWarning,
-  resetBrowserModeWarning,
-  getFromStorage,
-  setToStorage,
-  getStorageKey,
-} from './utils';
-export type { FileBase64Result } from './utils';
-
-// Health Hooks
-export { useHealth, useProvidersStatus, useStatus } from './useHealth';
-
+// Types
+export type {
+  AiModel,
+  AnalysisResult,
+  AppSettings,
+  AvailableModel,
+  BoundingBox,
+  CroppedPhoto,
+  CropResult,
+  DamageSeverity,
+  DamageType,
+  DetectionResult,
+  HealthResponse,
+  HistoryEntry,
+  ModelCapability,
+  OperationType,
+  ProviderStatus,
+  RestorationResult,
+  WorkflowProgress,
+  WorkflowResult,
+} from './types';
+export type { AnalyzeImageParams } from './useAnalysis';
 // Analysis Hooks
 export { useAnalyzeImage } from './useAnalysis';
-export type { AnalyzeImageParams } from './useAnalysis';
-
-// Restoration Hooks
-export { useRestoreImage, useRestorationWorkflow } from './useRestoration';
-export type { RestoreImageParams, WorkflowProgressCallback } from './useRestoration';
-
+export type { CropPhotosParams, DetectPhotosParams } from './useCrop';
+// Crop Hooks
+export { useCropPhotos, useDetectPhotos } from './useCrop';
+// Health Hooks
+export { useHealth, useProvidersStatus, useStatus } from './useHealth';
 // History Hooks
-export { useHistory, useClearHistory } from './useHistory';
-
-// Settings Hooks
-export { useSettings, useSaveSettings, useSetApiKey } from './useSettings';
-export type { SetApiKeyParams } from './useSettings';
-
+export { useClearHistory, useHistory } from './useHistory';
 // Model Hooks
 export {
-  useOllamaModels,
   useAvailableModels,
+  useDefaultModel,
+  useModels,
+  useOllamaModels,
   useSelectedModel,
   useSetSelectedModel,
-  useModels,
-  useDefaultModel,
 } from './useModels';
+export type { RestoreImageParams, WorkflowProgressCallback } from './useRestoration';
+// Restoration Hooks
+export { useRestorationWorkflow, useRestoreImage } from './useRestoration';
+export type { SetApiKeyParams } from './useSettings';
+// Settings Hooks
+export { useSaveSettings, useSetApiKey, useSettings } from './useSettings';
+export type { FileBase64Result } from './utils';
+// Utilities
+export {
+  delay,
+  fileToBase64,
+  fileToDataUrl,
+  getFromStorage,
+  getStorageKey,
+  resetBrowserModeWarning,
+  safeInvoke,
+  setToStorage,
+  showBrowserModeWarning,
+} from './utils';

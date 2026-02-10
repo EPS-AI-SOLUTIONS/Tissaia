@@ -4,19 +4,29 @@
  * ======================
  * Tests for application header with breadcrumbs and status.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Header from '../../../components/Header';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Helper to render with providers
 function renderWithProviders(
   ui: React.ReactElement,
-  options: { theme?: 'dark' | 'light'; locale?: string } = {}
+  options: { theme?: 'dark' | 'light'; locale?: string } = {},
 ) {
   const { theme = 'dark', locale = 'pl' } = options;
   i18n.changeLanguage(locale);
@@ -26,7 +36,7 @@ function renderWithProviders(
       <ThemeProvider defaultTheme={theme} storageKey="test-theme">
         {ui}
       </ThemeProvider>
-    </I18nextProvider>
+    </I18nextProvider>,
   );
 }
 
@@ -35,7 +45,7 @@ describe('Header', () => {
     vi.clearAllMocks();
     // Reset store state
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -56,7 +66,7 @@ describe('Header', () => {
 
     it('displays current view in breadcrumb', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('analyze');
+        useViewStore.getState().setCurrentView('analyze');
       });
       renderWithProviders(<Header />, { locale: 'en' });
       expect(screen.getByText('Analyze')).toBeInTheDocument();
@@ -70,7 +80,7 @@ describe('Header', () => {
   describe('breadcrumbs', () => {
     it('displays upload view label', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('upload');
+        useViewStore.getState().setCurrentView('upload');
       });
       renderWithProviders(<Header />, { locale: 'en' });
       expect(screen.getByText('Upload')).toBeInTheDocument();
@@ -78,7 +88,7 @@ describe('Header', () => {
 
     it('displays settings view label in Polish', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('settings');
+        useViewStore.getState().setCurrentView('settings');
       });
       renderWithProviders(<Header />, { locale: 'pl' });
       expect(screen.getByText('Ustawienia')).toBeInTheDocument();
@@ -86,7 +96,7 @@ describe('Header', () => {
 
     it('displays history view label', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('history');
+        useViewStore.getState().setCurrentView('history');
       });
       renderWithProviders(<Header />, { locale: 'en' });
       expect(screen.getByText('History')).toBeInTheDocument();
@@ -94,14 +104,14 @@ describe('Header', () => {
 
     it('navigates to upload view when home button clicked', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('settings');
+        useViewStore.getState().setCurrentView('settings');
       });
       renderWithProviders(<Header />);
 
       const homeButton = screen.getByRole('button', { name: /Tissaia/i });
       fireEvent.click(homeButton);
 
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
   });
 
@@ -191,12 +201,20 @@ describe('Header', () => {
   // ============================================
 
   describe('view labels localization', () => {
-    const views = ['upload', 'analyze', 'restore', 'results', 'history', 'settings', 'health'] as const;
+    const views = [
+      'upload',
+      'analyze',
+      'restore',
+      'results',
+      'history',
+      'settings',
+      'health',
+    ] as const;
 
     views.forEach((view) => {
       it(`displays correct label for ${view} view in English`, () => {
         act(() => {
-          useAppStore.getState().setCurrentView(view);
+          useViewStore.getState().setCurrentView(view);
         });
         renderWithProviders(<Header />, { locale: 'en' });
 

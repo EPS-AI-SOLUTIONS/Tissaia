@@ -4,8 +4,9 @@
  * ==============
  * Reusable card container with glass effect variants.
  */
-import { type ReactNode, forwardRef } from 'react';
+
 import { cva, type VariantProps } from 'class-variance-authority';
+import { forwardRef, type ReactNode } from 'react';
 import { cn } from '../../utils';
 
 // ============================================
@@ -46,7 +47,7 @@ const cardVariants = cva(
       padding: 'md',
       hover: 'none',
     },
-  }
+  },
 );
 
 // ============================================
@@ -70,7 +71,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         {children}
       </div>
     );
-  }
+  },
 );
 
 Card.displayName = 'Card';
@@ -86,7 +87,10 @@ export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 export function CardHeader({ className, children, ...props }: CardHeaderProps) {
   return (
     <div
-      className={cn('flex items-center justify-between pb-4 border-b border-matrix-border', className)}
+      className={cn(
+        'flex items-center justify-between pb-4 border-b border-matrix-border',
+        className,
+      )}
       {...props}
     >
       {children}
@@ -139,7 +143,10 @@ export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
 export function CardFooter({ className, children, ...props }: CardFooterProps) {
   return (
     <div
-      className={cn('flex items-center justify-between pt-4 border-t border-matrix-border mt-4', className)}
+      className={cn(
+        'flex items-center justify-between pt-4 border-t border-matrix-border mt-4',
+        className,
+      )}
       {...props}
     >
       {children}

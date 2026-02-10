@@ -9,20 +9,12 @@
  * 5. Detekcja uszkodzeń
  * 6. Generowanie raportu AI
  */
-import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Loader2,
-  Palette,
-  Grid3X3,
-  Scan,
-  AlertTriangle,
-  FileText,
-  Check,
-  Zap,
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+
+import { AnimatePresence, motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
+import { AlertTriangle, Check, FileText, Grid3X3, Loader2, Palette, Scan, Zap } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface AnalysisProgressBarProps {
   /** Czy analiza jest w toku */
@@ -91,9 +83,6 @@ const ANALYSIS_STEPS: AnalysisStep[] = [
   },
 ];
 
-// Oblicz całkowity czas animacji
-const TOTAL_DURATION = ANALYSIS_STEPS.reduce((sum, step) => sum + step.duration, 0);
-
 export function AnalysisProgressBar({ isAnalyzing, onComplete }: AnalysisProgressBarProps) {
   const { t } = useTranslation();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -120,6 +109,8 @@ export function AnalysisProgressBar({ isAnalyzing, onComplete }: AnalysisProgres
       return;
     }
 
+    const cancelled = { current: false };
+
     // Animate progress within current step
     const startProgress = currentStep.startPercent;
     const endProgress = currentStep.endPercent;
@@ -127,6 +118,8 @@ export function AnalysisProgressBar({ isAnalyzing, onComplete }: AnalysisProgres
     const startTime = Date.now();
 
     const animateProgress = () => {
+      if (cancelled.current) return;
+
       const elapsed = Date.now() - startTime;
       const stepProgress = Math.min(elapsed / duration, 1);
       const newProgress = startProgress + (endProgress - startProgress) * stepProgress;
@@ -147,7 +140,10 @@ export function AnalysisProgressBar({ isAnalyzing, onComplete }: AnalysisProgres
     };
 
     const frameId = requestAnimationFrame(animateProgress);
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      cancelled.current = true;
+      cancelAnimationFrame(frameId);
+    };
   }, [isAnalyzing, currentStepIndex, isComplete, onComplete]);
 
   const currentStep = ANALYSIS_STEPS[currentStepIndex];

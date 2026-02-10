@@ -4,67 +4,62 @@
  * =============
  */
 
-// Theme Hooks
-export { useGlassPanel, useIsLightTheme, useThemeClass } from './useThemeClass';
-export { useViewTheme } from './useViewTheme';
-export type { ViewTheme } from './useViewTheme';
-
-// API Hooks (Tauri) - Modular Exports
-export {
-  // Health & Status
-  useHealth,
-  useStatus,
-  useProvidersStatus,
-  // Analysis
-  useAnalyzeImage,
-  // Restoration
-  useRestoreImage,
-  useRestorationWorkflow,
-  // History
-  useHistory,
-  useClearHistory,
-  // Settings
-  useSettings,
-  useSaveSettings,
-  useSetApiKey,
-  // Models
-  useModels,
-  useDefaultModel,
-  useOllamaModels,
-  useAvailableModels,
-  useSelectedModel,
-  useSetSelectedModel,
-  // Query Keys
-  queryKeys,
-  // Utilities
-  safeInvoke,
-  fileToBase64,
-} from './useApi';
-
 // Types from API
 export type {
-  // Core Types
-  AnalysisResult,
-  RestorationResult,
-  HistoryEntry,
-  ProviderStatus,
-  HealthResponse,
-  AppSettings,
-  DamageType,
-  DamageSeverity,
   // Model Types
   AiModel,
+  // Core Types
+  AnalysisResult,
+  AppSettings as ApiAppSettings,
   AvailableModel,
+  DamageSeverity,
+  DamageType,
+  HealthResponse as ApiHealthResponse,
+  HistoryEntry as ApiHistoryEntry,
   ModelCapability,
+  ProviderStatus as ApiProviderStatus,
+  RestorationResult as ApiRestorationResult,
   // Workflow Types
   WorkflowProgress,
   WorkflowResult,
 } from './useApi';
-
+// API Hooks (Tauri) - Modular Exports
+export {
+  fileToBase64,
+  // Query Keys
+  queryKeys,
+  // Utilities
+  safeInvoke,
+  // Analysis
+  useAnalyzeImage,
+  useAvailableModels,
+  useClearHistory,
+  useDefaultModel,
+  // Health & Status
+  useHealth,
+  // History
+  useHistory,
+  // Models
+  useModels,
+  useOllamaModels,
+  useProvidersStatus,
+  useRestorationWorkflow,
+  // Restoration
+  useRestoreImage,
+  useSaveSettings,
+  useSelectedModel,
+  useSetApiKey,
+  useSetSelectedModel,
+  // Settings
+  useSettings,
+  useStatus,
+} from './useApi';
 // Custom Hooks
-export { useLocalStorage } from './useLocalStorage';
 export { useDebounce } from './useDebounce';
-
 // Keyboard Shortcuts
-export { useHotkey, isHotkeyPressed } from './useHotkey';
+export { isHotkeyPressed, useHotkey } from './useHotkey';
 export { useKeyboardShortcuts } from './useKeyboardShortcuts';
+// Theme Hooks
+export { useGlassPanel } from './useThemeClass';
+export type { ViewTheme } from './useViewTheme';
+export { useViewTheme } from './useViewTheme';

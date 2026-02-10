@@ -4,15 +4,25 @@
  * ===========================
  * Tests for photo analysis view.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AnalyzeView from '../../../components/photo/AnalyzeView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock useApi hooks
 const mockMutateAsync = vi.fn();
@@ -24,7 +34,13 @@ vi.mock('../../../hooks/useApi', () => ({
   })),
   useAvailableModels: vi.fn(() => ({
     data: [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
+      {
+        id: 'gemini-2.0-flash-exp',
+        name: 'Gemini 2.0 Flash',
+        provider: 'google',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
     ],
     isLoading: false,
   })),
@@ -41,12 +57,15 @@ vi.mock('../../../hooks/useApi', () => ({
 }));
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
@@ -64,7 +83,7 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -76,7 +95,7 @@ function createMockPhoto(id: string = 'photo-1', name: string = 'test.jpg') {
     preview: 'data:image/jpeg;base64,test',
     size: 1024,
     mimeType: 'image/jpeg',
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     file: new File([''], name, { type: 'image/jpeg' }),
   };
 }
@@ -86,7 +105,7 @@ describe('AnalyzeView', () => {
     vi.clearAllMocks();
     // Reset store state
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -98,7 +117,7 @@ describe('AnalyzeView', () => {
     it('redirects to upload when no photos', () => {
       renderWithProviders(<AnalyzeView />);
       // Should set current view to upload
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
   });
 
@@ -109,7 +128,7 @@ describe('AnalyzeView', () => {
   describe('rendering with photos', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
@@ -143,8 +162,8 @@ describe('AnalyzeView', () => {
   describe('multiple photos', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto('photo-1', 'test1.jpg'));
-        useAppStore.getState().addPhoto(createMockPhoto('photo-2', 'test2.jpg'));
+        usePhotoStore.getState().addPhoto(createMockPhoto('photo-1', 'test1.jpg'));
+        usePhotoStore.getState().addPhoto(createMockPhoto('photo-2', 'test2.jpg'));
       });
     });
 
@@ -163,9 +182,7 @@ describe('AnalyzeView', () => {
       renderWithProviders(<AnalyzeView />);
 
       // Find second thumbnail button
-      const thumbnails = screen.getAllByRole('button').filter(
-        btn => btn.querySelector('img')
-      );
+      const thumbnails = screen.getAllByRole('button').filter((btn) => btn.querySelector('img'));
 
       if (thumbnails[1]) {
         fireEvent.click(thumbnails[1]);
@@ -184,25 +201,20 @@ describe('AnalyzeView', () => {
   describe('analysis state', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
-    it('shows no results message initially', () => {
-      // Reset mutation to not trigger auto-analysis
-      mockMutateAsync.mockReset();
-
-      renderWithProviders(<AnalyzeView />);
-      // After auto-analysis is disabled or before it runs - may have multiple matches
-      const noResultsElements = screen.getAllByText(/brak wyników analizy|rozpocznij analizę/i);
-      expect(noResultsElements.length).toBeGreaterThan(0);
+    it('auto-starts analysis on mount', () => {
+      const { container } = renderWithProviders(<AnalyzeView />);
+      // Auto-analysis triggers immediately — AnalysisProgressBar renders with animated stages
+      const loaders = container.querySelectorAll('.animate-spin, [class*="lucide-loader"]');
+      expect(loaders.length).toBeGreaterThan(0);
     });
 
-    it('shows start analysis button when no results', () => {
-      mockMutateAsync.mockReset();
-
+    it('shows analysis heading', () => {
       renderWithProviders(<AnalyzeView />);
-      expect(screen.getByRole('button', { name: /rozpocznij analizę/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
     });
   });
 
@@ -213,7 +225,7 @@ describe('AnalyzeView', () => {
   describe('loading state', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
@@ -238,7 +250,7 @@ describe('AnalyzeView', () => {
   describe('navigation', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 

@@ -3,8 +3,9 @@
  * useDebounce Hook Tests
  * ======================
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDebounce, useDebouncedCallback } from '../../../hooks/useDebounce';
 
 describe('useDebounce', () => {
@@ -22,10 +23,9 @@ describe('useDebounce', () => {
   });
 
   it('updates value after delay', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 300),
-      { initialProps: { value: 'initial' } }
-    );
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 300), {
+      initialProps: { value: 'initial' },
+    });
 
     expect(result.current).toBe('initial');
 
@@ -45,10 +45,9 @@ describe('useDebounce', () => {
   });
 
   it('uses default delay of 300ms', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value),
-      { initialProps: { value: 'initial' } }
-    );
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value), {
+      initialProps: { value: 'initial' },
+    });
 
     rerender({ value: 'updated' });
 
@@ -66,10 +65,9 @@ describe('useDebounce', () => {
   });
 
   it('cancels pending update on new value', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 300),
-      { initialProps: { value: 'initial' } }
-    );
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 300), {
+      initialProps: { value: 'initial' },
+    });
 
     // First update
     rerender({ value: 'first' });
@@ -94,10 +92,9 @@ describe('useDebounce', () => {
   it('cleans up timer on unmount', () => {
     const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 
-    const { rerender, unmount } = renderHook(
-      ({ value }) => useDebounce(value, 300),
-      { initialProps: { value: 'initial' } }
-    );
+    const { rerender, unmount } = renderHook(({ value }) => useDebounce(value, 300), {
+      initialProps: { value: 'initial' },
+    });
 
     rerender({ value: 'updated' });
     unmount();

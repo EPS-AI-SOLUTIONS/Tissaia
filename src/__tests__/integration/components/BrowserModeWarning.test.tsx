@@ -4,8 +4,9 @@
  * ===================================
  * Tests for browser mode warning banner.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BrowserModeWarning from '../../../components/ui/BrowserModeWarning';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
 
@@ -35,7 +36,7 @@ function renderWithTheme(ui: React.ReactElement, theme: 'dark' | 'light' = 'dark
   return render(
     <ThemeProvider defaultTheme={theme} storageKey="test-theme">
       {ui}
-    </ThemeProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -44,7 +45,7 @@ describe('BrowserModeWarning', () => {
     vi.clearAllMocks();
     sessionStorageMock.clear();
     // Ensure we're NOT in Tauri mode
-    delete (window as Record<string, unknown>).__TAURI__;
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
   });
 
   // ============================================
@@ -58,7 +59,7 @@ describe('BrowserModeWarning', () => {
     });
 
     it('does not render in Tauri mode', () => {
-      (window as Record<string, unknown>).__TAURI__ = {};
+      (window as unknown as Record<string, unknown>).__TAURI__ = {};
       const { container } = renderWithTheme(<BrowserModeWarning />);
       expect(container.firstChild).toBeNull();
     });
@@ -113,7 +114,7 @@ describe('BrowserModeWarning', () => {
 
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith(
         'tissaia-browser-warning-dismissed',
-        'true'
+        'true',
       );
     });
 

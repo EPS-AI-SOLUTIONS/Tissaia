@@ -6,11 +6,11 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '../../utils/tauri';
-import { queryKeys } from './queryKeys';
-import { safeInvoke, fileToBase64, delay } from './utils';
 import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from './mocks';
+import { queryKeys } from './queryKeys';
 import type { AnalysisResult, RestorationResult, WorkflowResult } from './types';
 import { useAnalyzeImage } from './useAnalysis';
+import { delay, fileToBase64, safeInvoke } from './utils';
 
 // ============================================
 // RESTORE IMAGE
@@ -29,7 +29,7 @@ export function useRestoreImage() {
 
   return useMutation({
     mutationFn: async ({ file, analysis }: RestoreImageParams): Promise<RestorationResult> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         // Mock restoration for browser/test mode
         await delay(MOCK_RESTORATION_DELAY);
         const { base64 } = await fileToBase64(file);
@@ -64,7 +64,7 @@ export function useRestorationWorkflow() {
 
   const runWorkflow = async (
     file: File,
-    onProgress?: WorkflowProgressCallback
+    onProgress?: WorkflowProgressCallback,
   ): Promise<WorkflowResult> => {
     // Stage 1: Analyze
     onProgress?.('analyzing', 0);

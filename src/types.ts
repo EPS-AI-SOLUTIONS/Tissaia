@@ -8,14 +8,15 @@
 // VIEW TYPES
 // ============================================
 
-export type View = 
-  | 'upload'      // Main photo upload view
-  | 'analyze'     // Photo analysis view
-  | 'restore'     // Restoration in progress
-  | 'results'     // Restoration results
-  | 'history'     // Past restorations
-  | 'settings'    // App settings
-  | 'health';     // Provider health dashboard
+export type View =
+  | 'upload' // Main photo upload view
+  | 'crop' // Photo separation from scans
+  | 'analyze' // Photo analysis view
+  | 'restore' // Restoration in progress
+  | 'results' // Restoration results
+  | 'history' // Past restorations
+  | 'settings' // App settings
+  | 'health'; // Provider health dashboard
 
 // ============================================
 // PHOTO TYPES
@@ -24,12 +25,12 @@ export type View =
 export interface PhotoFile {
   id: string;
   file: File;
-  preview: string;       // Object URL for preview
-  base64?: string;       // Base64 encoded data
+  preview: string; // Object URL for preview
+  base64?: string; // Base64 encoded data
   mimeType: string;
   size: number;
   name: string;
-  uploadedAt: Date;
+  uploadedAt: string; // ISO 8601 string (survives JSON serialization)
 }
 
 export interface FaceDetection {
@@ -44,7 +45,7 @@ export interface FaceDetection {
 }
 
 export interface DamageAssessment {
-  overallScore: number;   // 0-100, higher = more damage
+  overallScore: number; // 0-100, higher = more damage
   scratches: boolean;
   fading: boolean;
   tears: boolean;
@@ -66,7 +67,7 @@ export interface PhotoAnalysis {
     height: number;
   };
   recommendations: string[];
-  analyzedAt: Date;
+  analyzedAt: string; // ISO 8601 string (survives JSON serialization)
 }
 
 export interface RestorationOptions {
@@ -88,7 +89,7 @@ export interface RestorationResult {
   qualityBefore: number;
   qualityAfter: number;
   processingTimeMs: number;
-  restoredAt: Date;
+  restoredAt: string; // ISO 8601 string (survives JSON serialization)
 }
 
 export interface RestorationJob {
@@ -99,9 +100,9 @@ export interface RestorationJob {
   result: RestorationResult | null;
   status: 'pending' | 'analyzing' | 'restoring' | 'completed' | 'failed';
   error: string | null;
-  progress: number;  // 0-100
-  createdAt: Date;
-  updatedAt: Date;
+  progress: number; // 0-100
+  createdAt: string; // ISO 8601 string (survives JSON serialization)
+  updatedAt: string; // ISO 8601 string (survives JSON serialization)
 }
 
 // ============================================
@@ -189,7 +190,7 @@ export interface AppSettings {
 export interface HistoryEntry {
   id: string;
   job: RestorationJob;
-  createdAt: Date;
+  createdAt: string; // ISO 8601 string (survives JSON serialization)
 }
 
 // ============================================
@@ -198,11 +199,11 @@ export interface HistoryEntry {
 
 export interface GitLabConfig {
   enabled: boolean;
-  instanceUrl: string;        // e.g., 'https://gitlab.com' or self-hosted URL
-  projectId: string;          // Project ID or URL-encoded path (e.g., 'user/project')
-  privateToken: string;       // Personal Access Token
-  branch: string;             // Target branch for commits (default: 'main')
-  uploadPath: string;         // Path in repo for uploads (e.g., 'uploads/restored')
+  instanceUrl: string; // e.g., 'https://gitlab.com' or self-hosted URL
+  projectId: string; // Project ID or URL-encoded path (e.g., 'user/project')
+  privateToken: string; // Personal Access Token
+  branch: string; // Target branch for commits (default: 'main')
+  uploadPath: string; // Path in repo for uploads (e.g., 'uploads/restored')
 }
 
 export interface GitLabUploadResponse {

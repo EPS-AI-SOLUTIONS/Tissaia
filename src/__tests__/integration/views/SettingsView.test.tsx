@@ -4,15 +4,26 @@
  * ============================
  * Tests for application settings view.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SettingsView from '../../../components/SettingsView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useSettingsStore } from '../../../store/useSettingsStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock useApi hooks
 const mockProviders = [
@@ -41,12 +52,15 @@ vi.mock('../../../hooks/useApi', () => ({
 }));
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
@@ -64,7 +78,7 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -72,7 +86,7 @@ describe('SettingsView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -174,7 +188,7 @@ describe('SettingsView', () => {
     it('toggles auto-analyze setting', () => {
       renderWithProviders(<SettingsView />, 'en');
 
-      const initialValue = useAppStore.getState().settings.autoAnalyze;
+      const initialValue = useSettingsStore.getState().settings.autoAnalyze;
 
       // Find toggle button (after the label)
       const settingRow = screen.getByText(/auto.*analy/i).closest('.flex');
@@ -184,7 +198,7 @@ describe('SettingsView', () => {
         fireEvent.click(toggleButton);
       }
 
-      expect(useAppStore.getState().settings.autoAnalyze).toBe(!initialValue);
+      expect(useSettingsStore.getState().settings.autoAnalyze).toBe(!initialValue);
     });
   });
 
@@ -221,7 +235,7 @@ describe('SettingsView', () => {
     });
 
     it('toggles password visibility', () => {
-      const { container } = renderWithProviders(<SettingsView />);
+      renderWithProviders(<SettingsView />);
       const passwordInput = screen.getAllByPlaceholderText(/API_KEY|wpisz nowy/i)[0];
       const toggleButton = passwordInput.parentElement?.querySelector('button');
 

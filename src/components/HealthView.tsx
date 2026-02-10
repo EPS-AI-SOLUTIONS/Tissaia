@@ -4,19 +4,20 @@
  * ======================================
  * Monitor AI providers status and system health.
  */
-import { useTranslation } from 'react-i18next';
+
 import { motion } from 'framer-motion';
 import {
   Activity,
-  CheckCircle,
   AlertTriangle,
-  XCircle,
-  RefreshCw,
+  CheckCircle,
   Clock,
+  RefreshCw,
   Server,
+  XCircle,
 } from 'lucide-react';
-import { useHealth, useProvidersStatus, type ProviderStatus } from '../hooks/useApi';
+import { useTranslation } from 'react-i18next';
 import { useViewTheme } from '../hooks';
+import { type ProviderStatus, useHealth, useProvidersStatus } from '../hooks/useApi';
 import Skeleton from './ui/Skeleton';
 
 // ============================================
@@ -32,11 +33,12 @@ interface ProviderCardProps {
 function ProviderCard({ provider, index, theme }: ProviderCardProps) {
   const { t } = useTranslation();
 
-  const status = provider.available && provider.enabled
-    ? 'healthy'
-    : provider.enabled
-    ? 'unavailable'
-    : 'disabled';
+  const status =
+    provider.available && provider.enabled
+      ? 'healthy'
+      : provider.enabled
+        ? 'unavailable'
+        : 'disabled';
 
   const statusConfig = {
     healthy: {
@@ -87,9 +89,7 @@ function ProviderCard({ provider, index, theme }: ProviderCardProps) {
       </div>
 
       {/* Priority */}
-      <div className={`mt-3 text-xs ${theme.textMuted}`}>
-        Priorytet: {provider.priority}
-      </div>
+      <div className={`mt-3 text-xs ${theme.textMuted}`}>Priorytet: {provider.priority}</div>
 
       {/* Error */}
       {provider.last_error && (
@@ -121,11 +121,12 @@ export default function HealthView() {
     return `${minutes}m`;
   };
 
-  const overallStatus = health?.status === 'healthy'
-    ? 'healthy'
-    : providers?.some(p => p.available)
-    ? 'degraded'
-    : 'unavailable';
+  const overallStatus =
+    health?.status === 'healthy'
+      ? 'healthy'
+      : providers?.some((p) => p.available)
+        ? 'degraded'
+        : 'unavailable';
 
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -142,8 +143,9 @@ export default function HealthView() {
         </div>
 
         <button
+          type="button"
           onClick={() => refetchHealth()}
-          className={theme.btnSecondary + ' px-4 py-2 flex items-center gap-2'}
+          className={`${theme.btnSecondary} px-4 py-2 flex items-center gap-2`}
           disabled={healthLoading}
         >
           <RefreshCw size={16} className={healthLoading ? 'animate-spin' : ''} />
@@ -154,59 +156,74 @@ export default function HealthView() {
       {/* Overall Status */}
       {healthLoading ? (
         <Skeleton className="h-24 w-full mb-6" />
-      ) : health && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`${theme.card} p-6 mb-6 border ${
-            overallStatus === 'healthy'
-              ? (theme.isLight ? 'border-emerald-500/30' : 'border-green-500/30')
-              : overallStatus === 'degraded'
-              ? 'border-yellow-500/30'
-              : 'border-red-500/30'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${
-                overallStatus === 'healthy'
-                  ? (theme.isLight ? 'bg-emerald-500/20' : 'bg-green-500/20')
-                  : overallStatus === 'degraded'
-                  ? 'bg-yellow-500/20'
-                  : 'bg-red-500/20'
-              }`}>
-                <Activity
-                  size={32}
-                  className={
+      ) : (
+        health && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`${theme.card} p-6 mb-6 border ${
+              overallStatus === 'healthy'
+                ? theme.isLight
+                  ? 'border-emerald-500/30'
+                  : 'border-green-500/30'
+                : overallStatus === 'degraded'
+                  ? 'border-yellow-500/30'
+                  : 'border-red-500/30'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div
+                  className={`p-3 rounded-full ${
                     overallStatus === 'healthy'
-                      ? (theme.isLight ? 'text-emerald-600' : 'text-green-400')
+                      ? theme.isLight
+                        ? 'bg-emerald-500/20'
+                        : 'bg-green-500/20'
                       : overallStatus === 'degraded'
-                      ? 'text-yellow-500'
-                      : 'text-red-500'
-                  }
-                />
+                        ? 'bg-yellow-500/20'
+                        : 'bg-red-500/20'
+                  }`}
+                >
+                  <Activity
+                    size={32}
+                    className={
+                      overallStatus === 'healthy'
+                        ? theme.isLight
+                          ? 'text-emerald-600'
+                          : 'text-green-400'
+                        : overallStatus === 'degraded'
+                          ? 'text-yellow-500'
+                          : 'text-red-500'
+                    }
+                  />
+                </div>
+                <div>
+                  <h3 className={`text-xl font-bold ${theme.title}`}>
+                    System{' '}
+                    {overallStatus === 'healthy'
+                      ? 'sprawny'
+                      : overallStatus === 'degraded'
+                        ? 'ograniczony'
+                        : 'niedostępny'}
+                  </h3>
+                  <p className={`text-sm ${theme.textMuted}`}>
+                    Wersja: {health.version} (Rust/Tauri)
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className={`text-xl font-bold ${theme.title}`}>
-                  System {overallStatus === 'healthy' ? 'sprawny' : overallStatus === 'degraded' ? 'ograniczony' : 'niedostępny'}
-                </h3>
-                <p className={`text-sm ${theme.textMuted}`}>
-                  Wersja: {health.version} (Rust/Tauri)
-                </p>
-              </div>
-            </div>
 
-            <div className="text-right">
-              <div className={`flex items-center gap-2 ${theme.textMuted}`}>
-                <Clock size={16} />
-                <span>{t('health.uptime')}</span>
-              </div>
-              <div className={`text-2xl font-bold ${theme.textAccent}`}>
-                {formatUptime(health.uptime_seconds)}
+              <div className="text-right">
+                <div className={`flex items-center gap-2 ${theme.textMuted}`}>
+                  <Clock size={16} />
+                  <span>{t('health.uptime')}</span>
+                </div>
+                <div className={`text-2xl font-bold ${theme.textAccent}`}>
+                  {formatUptime(health.uptime_seconds)}
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )
       )}
 
       {/* Providers Grid */}
@@ -222,12 +239,7 @@ export default function HealthView() {
         ) : providers && providers.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {providers.map((provider, index) => (
-              <ProviderCard
-                key={provider.name}
-                provider={provider}
-                index={index}
-                theme={theme}
-              />
+              <ProviderCard key={provider.name} provider={provider} index={index} theme={theme} />
             ))}
           </div>
         ) : (
@@ -242,11 +254,21 @@ export default function HealthView() {
           Aby aktywować providera, ustaw odpowiedni klucz API w zmiennych środowiskowych:
         </p>
         <ul className={`mt-2 text-sm ${theme.textMuted} space-y-1`}>
-          <li><code className="bg-black/20 px-1 rounded">GOOGLE_API_KEY</code> - Google Gemini</li>
-          <li><code className="bg-black/20 px-1 rounded">ANTHROPIC_API_KEY</code> - Claude</li>
-          <li><code className="bg-black/20 px-1 rounded">OPENAI_API_KEY</code> - GPT-4</li>
-          <li><code className="bg-black/20 px-1 rounded">MISTRAL_API_KEY</code> - Mistral</li>
-          <li><code className="bg-black/20 px-1 rounded">GROQ_API_KEY</code> - Groq</li>
+          <li>
+            <code className="bg-black/20 px-1 rounded">GOOGLE_API_KEY</code> - Google Gemini
+          </li>
+          <li>
+            <code className="bg-black/20 px-1 rounded">ANTHROPIC_API_KEY</code> - Claude
+          </li>
+          <li>
+            <code className="bg-black/20 px-1 rounded">OPENAI_API_KEY</code> - GPT-4
+          </li>
+          <li>
+            <code className="bg-black/20 px-1 rounded">MISTRAL_API_KEY</code> - Mistral
+          </li>
+          <li>
+            <code className="bg-black/20 px-1 rounded">GROQ_API_KEY</code> - Groq
+          </li>
         </ul>
       </div>
     </div>

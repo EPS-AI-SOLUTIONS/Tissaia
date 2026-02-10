@@ -57,6 +57,7 @@ export const Degraded: Story = {
 /**
  * Header showing error status
  */
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Storybook convention
 export const Error: Story = {
   args: {
     status: 'error',

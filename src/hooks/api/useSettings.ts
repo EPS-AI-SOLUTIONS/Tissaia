@@ -4,13 +4,13 @@
  * ==============
  * Hooks for application settings management.
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { isTauri } from '../../utils/tauri';
-import { queryKeys } from './queryKeys';
-import { safeInvoke } from './utils';
 import { mockSettings } from './mocks';
+import { queryKeys } from './queryKeys';
 import type { AppSettings } from './types';
+import { safeInvoke } from './utils';
 
 // ============================================
 // FETCH SETTINGS
@@ -23,7 +23,7 @@ export function useSettings() {
   return useQuery({
     queryKey: queryKeys.settings,
     queryFn: async (): Promise<AppSettings> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         return mockSettings;
       }
       return safeInvoke<AppSettings>('get_settings');
@@ -43,7 +43,7 @@ export function useSaveSettings() {
 
   return useMutation({
     mutationFn: async (settings: AppSettings): Promise<void> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         toast.error('Zapisywanie ustawień wymaga aplikacji Tauri');
         throw new Error('Tauri is required for saving settings');
       }
@@ -72,7 +72,7 @@ export function useSetApiKey() {
 
   return useMutation({
     mutationFn: async ({ provider, key }: SetApiKeyParams): Promise<void> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         toast.error('Ustawianie klucza API wymaga aplikacji Tauri');
         throw new Error('Tauri is required for setting API key');
       }

@@ -5,16 +5,16 @@
  * Factory functions for creating mock data in tests.
  */
 import type {
-  PhotoFile,
-  PhotoAnalysis,
-  RestorationJob,
-  RestorationResult,
-  RestorationOptions,
-  HistoryEntry,
+  AppSettings,
   DamageAssessment,
   FaceDetection,
-  AppSettings,
   GitLabConfig,
+  HistoryEntry,
+  PhotoAnalysis,
+  PhotoFile,
+  RestorationJob,
+  RestorationOptions,
+  RestorationResult,
 } from '../../types';
 
 // ============================================
@@ -39,7 +39,7 @@ function nextId(prefix: string): string {
 export function createMockFile(
   name = 'test-photo.jpg',
   type = 'image/jpeg',
-  size = 1024 * 1024 // 1MB
+  size = 1024 * 1024, // 1MB
 ): File {
   const content = new Array(size).fill('x').join('');
   return new File([content], name, { type });
@@ -58,7 +58,7 @@ export function createMockPhotoFile(overrides?: Partial<PhotoFile>): PhotoFile {
     mimeType: 'image/jpeg',
     size: file.size,
     name: file.name,
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -83,7 +83,9 @@ export function createMockFaceDetection(overrides?: Partial<FaceDetection>): Fac
 // DAMAGE ASSESSMENT FACTORY
 // ============================================
 
-export function createMockDamageAssessment(overrides?: Partial<DamageAssessment>): DamageAssessment {
+export function createMockDamageAssessment(
+  overrides?: Partial<DamageAssessment>,
+): DamageAssessment {
   return {
     overallScore: 35,
     scratches: true,
@@ -111,7 +113,7 @@ export function createMockPhotoAnalysis(overrides?: Partial<PhotoAnalysis>): Pho
     qualityScore: 65,
     resolution: { width: 1920, height: 1080 },
     recommendations: ['Remove scratches', 'Restore faded colors', 'Enhance faces'],
-    analyzedAt: new Date(),
+    analyzedAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -120,7 +122,9 @@ export function createMockPhotoAnalysis(overrides?: Partial<PhotoAnalysis>): Pho
 // RESTORATION OPTIONS FACTORY
 // ============================================
 
-export function createMockRestorationOptions(overrides?: Partial<RestorationOptions>): RestorationOptions {
+export function createMockRestorationOptions(
+  overrides?: Partial<RestorationOptions>,
+): RestorationOptions {
   return {
     removeScratches: true,
     fixFading: true,
@@ -137,7 +141,9 @@ export function createMockRestorationOptions(overrides?: Partial<RestorationOpti
 // RESTORATION RESULT FACTORY
 // ============================================
 
-export function createMockRestorationResult(overrides?: Partial<RestorationResult>): RestorationResult {
+export function createMockRestorationResult(
+  overrides?: Partial<RestorationResult>,
+): RestorationResult {
   return {
     id: nextId('result'),
     originalFilename: 'test-photo.jpg',
@@ -147,7 +153,7 @@ export function createMockRestorationResult(overrides?: Partial<RestorationResul
     qualityBefore: 45,
     qualityAfter: 85,
     processingTimeMs: 2500,
-    restoredAt: new Date(),
+    restoredAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -158,7 +164,7 @@ export function createMockRestorationResult(overrides?: Partial<RestorationResul
 
 export function createMockRestorationJob(
   overrides?: Partial<RestorationJob>,
-  status: RestorationJob['status'] = 'pending'
+  status: RestorationJob['status'] = 'pending',
 ): RestorationJob {
   const photo = createMockPhotoFile();
   const analysis = status !== 'pending' ? createMockPhotoAnalysis() : null;
@@ -173,8 +179,8 @@ export function createMockRestorationJob(
     status,
     error: status === 'failed' ? 'Analysis failed due to API error' : null,
     progress: status === 'completed' ? 100 : status === 'failed' ? 0 : 50,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -187,7 +193,7 @@ export function createMockHistoryEntry(overrides?: Partial<HistoryEntry>): Histo
   return {
     id: nextId('history'),
     job: createMockRestorationJob({}, 'completed'),
-    createdAt: new Date(),
+    createdAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -235,10 +241,13 @@ export function createMockHistoryList(count = 5): HistoryEntry[] {
     date.setHours(date.getHours() - i);
 
     return createMockHistoryEntry({
-      createdAt: date,
-      job: createMockRestorationJob({
-        status: i % 4 === 3 ? 'failed' : 'completed',
-      }, i % 4 === 3 ? 'failed' : 'completed'),
+      createdAt: date.toISOString(),
+      job: createMockRestorationJob(
+        {
+          status: i % 4 === 3 ? 'failed' : 'completed',
+        },
+        i % 4 === 3 ? 'failed' : 'completed',
+      ),
     });
   });
 }
@@ -251,6 +260,6 @@ export function createMockPhotoList(count = 3): PhotoFile[] {
   return Array.from({ length: count }, (_, i) =>
     createMockPhotoFile({
       name: `photo-${i + 1}.jpg`,
-    })
+    }),
   );
 }

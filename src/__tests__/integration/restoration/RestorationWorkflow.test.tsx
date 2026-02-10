@@ -4,11 +4,21 @@
  * ==========================
  * Integration tests for the full restoration workflow.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { renderWithProviders } from '../../utils/renderWithProviders';
+
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RestoreView from '../../../components/photo/RestoreView';
-import { useAppStore } from '../../../store/useAppStore';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+import { renderWithProviders } from '../../utils/renderWithProviders';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock useApi hooks
 const mockMutateAsync = vi.fn();
@@ -22,7 +32,13 @@ vi.mock('../../../hooks/useApi', () => ({
   })),
   useAvailableModels: vi.fn(() => ({
     data: [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
+      {
+        id: 'gemini-2.0-flash-exp',
+        name: 'Gemini 2.0 Flash',
+        provider: 'google',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
     ],
     isLoading: false,
   })),
@@ -40,7 +56,7 @@ vi.mock('../../../hooks/useApi', () => ({
 
 // Mock sonner
 vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+  toast: Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
   }),
@@ -54,7 +70,7 @@ function createMockPhoto() {
     preview: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==',
     size: 2048,
     mimeType: 'image/jpeg',
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     file: new File(['test'], 'test-restoration.jpg', { type: 'image/jpeg' }),
   };
 }
@@ -66,8 +82,18 @@ function createMockAnalysis() {
     timestamp: new Date().toISOString(),
     damage_score: 65,
     damage_types: [
-      { name: 'scratches', severity: 'medium' as const, description: 'Surface scratches', area_percentage: 20 },
-      { name: 'fading', severity: 'low' as const, description: 'Color fading', area_percentage: 35 },
+      {
+        name: 'scratches',
+        severity: 'medium' as const,
+        description: 'Surface scratches',
+        area_percentage: 20,
+      },
+      {
+        name: 'fading',
+        severity: 'low' as const,
+        description: 'Color fading',
+        area_percentage: 35,
+      },
     ],
     recommendations: ['Remove scratches', 'Enhance colors', 'Apply sharpening'],
     provider_used: 'google',
@@ -91,7 +117,7 @@ describe('Restoration Workflow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -116,7 +142,7 @@ describe('Restoration Workflow', () => {
 
     it('displays photo preview when photo exists', () => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -126,7 +152,7 @@ describe('Restoration Workflow', () => {
 
     it('displays photo name', () => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -141,8 +167,8 @@ describe('Restoration Workflow', () => {
   describe('With Analysis Results', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -182,8 +208,8 @@ describe('Restoration Workflow', () => {
   describe('Restoration Process', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -244,13 +270,13 @@ describe('Restoration Workflow', () => {
   describe('Navigation', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
     it('navigates to upload when no photo button clicked', () => {
       act(() => {
-        useAppStore.getState().clearPhotos();
+        usePhotoStore.getState().clearPhotos();
       });
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -258,7 +284,7 @@ describe('Restoration Workflow', () => {
       const uploadButton = screen.getByRole('button', { name: /wgraj zdjęcie/i });
       fireEvent.click(uploadButton);
 
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
 
     it('navigates back to analyze when back button clicked', () => {
@@ -267,12 +293,12 @@ describe('Restoration Workflow', () => {
       const backButton = screen.getByText(/wróć do analizy/i);
       fireEvent.click(backButton);
 
-      expect(useAppStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('analyze');
     });
 
     it('navigates to results after successful restoration', async () => {
       act(() => {
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
 
       mockMutateAsync.mockResolvedValueOnce(createMockRestorationResult());
@@ -283,7 +309,7 @@ describe('Restoration Workflow', () => {
       fireEvent.click(restoreButton);
 
       await waitFor(() => {
-        expect(useAppStore.getState().currentView).toBe('results');
+        expect(useViewStore.getState().currentView).toBe('results');
       });
     });
   });
@@ -295,13 +321,13 @@ describe('Restoration Workflow', () => {
   describe('Error Handling', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
     it('handles restoration error gracefully', async () => {
-      const toast = await import('sonner');
+      const sonnerModule = await import('sonner');
       mockMutateAsync.mockRejectedValueOnce(new Error('Restoration failed'));
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -310,12 +336,12 @@ describe('Restoration Workflow', () => {
       fireEvent.click(restoreButton);
 
       await waitFor(() => {
-        expect(toast.default.error).toHaveBeenCalledWith('Restoration failed');
+        expect(sonnerModule.toast.error).toHaveBeenCalledWith('Restoration failed');
       });
     });
 
     it('shows toast error without crashing', async () => {
-      const toast = await import('sonner');
+      const sonnerModule = await import('sonner');
       mockMutateAsync.mockRejectedValueOnce(new Error('Network error'));
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -324,7 +350,7 @@ describe('Restoration Workflow', () => {
       fireEvent.click(restoreButton);
 
       await waitFor(() => {
-        expect(toast.default.error).toHaveBeenCalled();
+        expect(sonnerModule.toast.error).toHaveBeenCalled();
       });
 
       // Ensure the component is still rendered after error
@@ -332,11 +358,11 @@ describe('Restoration Workflow', () => {
     });
 
     it('shows error message for missing photo', async () => {
-      const toast = await import('sonner');
+      await import('sonner');
 
       // Clear photos but keep analysis
       act(() => {
-        useAppStore.getState().clearPhotos();
+        usePhotoStore.getState().clearPhotos();
       });
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -348,7 +374,7 @@ describe('Restoration Workflow', () => {
     it('disables restore button when missing analysis', async () => {
       // Clear analysis
       act(() => {
-        useAppStore.setState({ currentAnalysis: null });
+        usePhotoStore.setState({ currentAnalysis: null });
       });
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -366,8 +392,8 @@ describe('Restoration Workflow', () => {
   describe('Localization', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 

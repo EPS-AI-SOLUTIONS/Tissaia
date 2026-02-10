@@ -4,23 +4,25 @@
  * ======================================
  * Photo restoration dashboard with Matrix Glass UI - Regis Style.
  */
-import { useEffect, Suspense, lazy } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAppStore } from './store/useAppStore';
-import { useStatus } from './hooks/useApi';
-import { useTheme } from './contexts/ThemeContext';
-import { useGlassPanel } from './hooks';
 
+import { AnimatePresence, motion } from 'framer-motion';
+import { lazy, Suspense, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import Header from './components/Header';
 // Components
 import Sidebar from './components/Sidebar';
-import Header from './components/Header';
+import BrowserModeWarning from './components/ui/BrowserModeWarning';
 import ProgressBar from './components/ui/ProgressBar';
 import Skeleton from './components/ui/Skeleton';
-import BrowserModeWarning from './components/ui/BrowserModeWarning';
+import { useTheme } from './contexts/ThemeContext';
+import { useGlassPanel } from './hooks';
+import { useStatus } from './hooks/useApi';
+import { useSettingsStore } from './store/useSettingsStore';
+import { useViewStore } from './store/useViewStore';
 
 // Lazy-loaded views
 const UploadView = lazy(() => import('./components/photo/UploadView'));
+const CropView = lazy(() => import('./components/photo/CropView'));
 const AnalyzeView = lazy(() => import('./components/photo/AnalyzeView'));
 const RestoreView = lazy(() => import('./components/photo/RestoreView'));
 const ResultsView = lazy(() => import('./components/photo/ResultsView'));
@@ -51,7 +53,10 @@ function ViewSkeleton() {
 
 export default function App() {
   const { i18n } = useTranslation();
-  const { currentView, isLoading, progressMessage, settings } = useAppStore();
+  const currentView = useViewStore((s) => s.currentView);
+  const isLoading = useViewStore((s) => s.isLoading);
+  const progressMessage = useViewStore((s) => s.progressMessage);
+  const settings = useSettingsStore((s) => s.settings);
   const { data: status } = useStatus();
   const { resolvedTheme } = useTheme();
   const glassPanel = useGlassPanel();
@@ -71,6 +76,8 @@ export default function App() {
     switch (currentView) {
       case 'upload':
         return <UploadView />;
+      case 'crop':
+        return <CropView />;
       case 'analyze':
         return <AnalyzeView />;
       case 'restore':
@@ -95,9 +102,15 @@ export default function App() {
   return (
     <div className="relative flex h-screen w-full text-slate-100 overflow-hidden font-mono selection:bg-matrix-accent selection:text-black">
       {/* Background Layer */}
-      <div className={`absolute inset-0 z-[1] bg-cover bg-center opacity-10 mix-blend-overlay transition-opacity duration-1000 pointer-events-none ${resolvedTheme === 'light' ? "bg-[url('/backgroundlight.webp')]" : "bg-[url('/background.webp')]"}`} />
-      <div className={`absolute inset-0 z-[1] bg-gradient-to-b ${resolvedTheme === 'light' ? 'from-white/30 via-transparent to-slate-100/50' : 'from-matrix-bg-primary/30 via-transparent to-matrix-bg-secondary/50'} transition-opacity duration-1000 pointer-events-none opacity-60`} />
-      <div className={`absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${resolvedTheme === 'light' ? 'from-emerald-500/5' : 'from-matrix-accent/5'} via-transparent to-transparent`} />
+      <div
+        className={`absolute inset-0 z-[1] bg-cover bg-center opacity-10 mix-blend-overlay transition-opacity duration-1000 pointer-events-none ${resolvedTheme === 'light' ? "bg-[url('/backgroundlight.webp')]" : "bg-[url('/background.webp')]"}`}
+      />
+      <div
+        className={`absolute inset-0 z-[1] bg-gradient-to-b ${resolvedTheme === 'light' ? 'from-white/30 via-transparent to-slate-100/50' : 'from-matrix-bg-primary/30 via-transparent to-matrix-bg-secondary/50'} transition-opacity duration-1000 pointer-events-none opacity-60`}
+      />
+      <div
+        className={`absolute inset-0 z-[1] pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${resolvedTheme === 'light' ? 'from-emerald-500/5' : 'from-matrix-accent/5'} via-transparent to-transparent`}
+      />
 
       {/* Browser Mode Warning - fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
@@ -139,21 +152,33 @@ export default function App() {
                 transition={{ duration: 0.2 }}
                 className="h-full"
               >
-                <Suspense fallback={<ViewSkeleton />}>
-                  {renderView()}
-                </Suspense>
+                <Suspense fallback={<ViewSkeleton />}>{renderView()}</Suspense>
               </motion.div>
             </AnimatePresence>
           </div>
 
           {/* Status Bar */}
-          <footer className={`px-6 py-2 border-t ${resolvedTheme === 'light' ? 'border-slate-200/30 bg-white/20 text-slate-600' : 'border-white/10 bg-black/20 text-slate-400'} text-xs flex items-center justify-between`}>
+          <footer
+            className={`px-6 py-2 border-t ${resolvedTheme === 'light' ? 'border-slate-200/30 bg-white/20 text-slate-600' : 'border-white/10 bg-black/20 text-slate-400'} text-xs flex items-center justify-between`}
+          >
             <div className="flex items-center gap-4">
-              <span className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}>Tissaia-AI v3.0.0</span>
-              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>|</span>
+              <span
+                className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}
+              >
+                Tissaia-AI v3.0.0
+              </span>
+              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>
+                |
+              </span>
               <span>
                 {status?.status === 'healthy' ? (
-                  <span className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}>● Online</span>
+                  <span
+                    className={
+                      resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'
+                    }
+                  >
+                    ● Online
+                  </span>
                 ) : (
                   <span className="text-yellow-500">● Degraded</span>
                 )}
@@ -161,8 +186,12 @@ export default function App() {
             </div>
             <div className="flex items-center gap-4">
               <span>Gemini Vision</span>
-              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>|</span>
-              <span>{new Date().toLocaleDateString(settings.language === 'pl' ? 'pl-PL' : 'en-US')}</span>
+              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>
+                |
+              </span>
+              <span>
+                {new Date().toLocaleDateString(settings.language === 'pl' ? 'pl-PL' : 'en-US')}
+              </span>
             </div>
           </footer>
         </main>

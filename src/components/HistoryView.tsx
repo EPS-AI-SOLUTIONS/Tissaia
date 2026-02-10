@@ -4,30 +4,35 @@
  * =========================================
  * Browse past restorations from Rust backend.
  */
-import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Trash2, History, CheckCircle, XCircle } from 'lucide-react';
+
 import { format } from 'date-fns';
-import { pl, enUS } from 'date-fns/locale';
+import { enUS, pl } from 'date-fns/locale';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle, Clock, History, Trash2, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useAppStore } from '../store/useAppStore';
-import { useHistory, useClearHistory, type HistoryEntry } from '../hooks/useApi';
 import { useViewTheme } from '../hooks';
+import { type HistoryEntry, useClearHistory, useHistory } from '../hooks/useApi';
+import { useSettingsStore } from '../store/useSettingsStore';
 import Skeleton from './ui/Skeleton';
 
 export default function HistoryView() {
   const { t } = useTranslation();
   const { data: history, isLoading } = useHistory();
   const clearHistoryMutation = useClearHistory();
-  const { settings } = useAppStore();
+  const settings = useSettingsStore((s) => s.settings);
   const theme = useViewTheme();
 
   const locale = settings.language === 'pl' ? pl : enUS;
 
   const handleClearHistory = async () => {
     if (confirm('Czy na pewno chcesz wyczyścić historię?')) {
-      await clearHistoryMutation.mutateAsync();
-      toast.success('Historia wyczyszczona');
+      try {
+        await clearHistoryMutation.mutateAsync();
+        toast.success('Historia wyczyszczona');
+      } catch (_error) {
+        toast.error('Nie udało się wyczyścić historii');
+      }
     }
   };
 
@@ -41,17 +46,16 @@ export default function HistoryView() {
           </div>
           <div>
             <h2 className={`text-2xl font-bold ${theme.textAccent}`}>{t('nav.history')}</h2>
-            <p className={theme.textMuted}>
-              {history?.length ?? 0} operacji
-            </p>
+            <p className={theme.textMuted}>{history?.length ?? 0} operacji</p>
           </div>
         </div>
 
         {history && history.length > 0 && (
           <button
+            type="button"
             onClick={handleClearHistory}
             disabled={clearHistoryMutation.isPending}
-            className={theme.btnDanger + ' px-4 py-2 flex items-center gap-2'}
+            className={`${theme.btnDanger} px-4 py-2 flex items-center gap-2`}
           >
             <Trash2 size={16} />
             <span>Wyczyść</span>
@@ -69,7 +73,9 @@ export default function HistoryView() {
           </div>
         ) : !history || history.length === 0 ? (
           <div className={`text-center py-12 ${theme.empty}`}>
-            <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl ${theme.accentBg} flex items-center justify-center`}>
+            <div
+              className={`w-16 h-16 mx-auto mb-4 rounded-2xl ${theme.accentBg} flex items-center justify-center`}
+            >
               <Clock size={32} className={theme.iconMuted} />
             </div>
             <p className={theme.textMuted}>Brak historii operacji</p>
@@ -89,7 +95,9 @@ export default function HistoryView() {
                 >
                   <div className="flex items-center gap-4">
                     {/* Status Icon */}
-                    <div className={`p-2 rounded-lg ${entry.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                    <div
+                      className={`p-2 rounded-lg ${entry.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}
+                    >
                       {entry.success ? (
                         <CheckCircle size={24} className="text-green-500" />
                       ) : (
@@ -109,9 +117,7 @@ export default function HistoryView() {
                           {format(new Date(entry.timestamp), 'PPp', { locale })}
                         </span>
 
-                        <span className={theme.badge}>
-                          {entry.provider}
-                        </span>
+                        <span className={theme.badge}>{entry.provider}</span>
                       </div>
 
                       {entry.error_message && (

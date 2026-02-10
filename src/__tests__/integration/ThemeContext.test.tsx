@@ -4,9 +4,10 @@
  * =======================
  * Tests for theme switching functionality.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import React from 'react';
+
+import { act, renderHook } from '@testing-library/react';
+import type React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider, useTheme } from '../../contexts/ThemeContext';
 
 // ============================================

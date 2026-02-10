@@ -4,13 +4,13 @@
  * ===============
  * Hooks for AI model selection and management.
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '../../utils/tauri';
+import { DEFAULT_MODEL_ID, mockAvailableModel, mockOllamaModels } from './mocks';
 import { queryKeys } from './queryKeys';
-import { safeInvoke } from './utils';
-import { mockOllamaModels, mockAvailableModel, DEFAULT_MODEL_ID } from './mocks';
+import type { AiModel, AppSettings, AvailableModel } from './types';
 import { useProvidersStatus } from './useHealth';
-import type { AiModel, AvailableModel, AppSettings } from './types';
+import { safeInvoke } from './utils';
 
 // ============================================
 // MODEL CONFIGURATIONS
@@ -24,13 +24,29 @@ interface ModelConfig {
 
 const PROVIDER_MODELS: Record<string, ModelConfig[]> = {
   google: [
-    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', capabilities: ['vision', 'text', 'restoration'] },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', capabilities: ['vision', 'text', 'restoration'] },
+    {
+      id: 'gemini-2.0-flash-exp',
+      name: 'Gemini 2.0 Flash',
+      capabilities: ['vision', 'text', 'restoration'],
+    },
+    {
+      id: 'gemini-1.5-pro',
+      name: 'Gemini 1.5 Pro',
+      capabilities: ['vision', 'text', 'restoration'],
+    },
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', capabilities: ['vision', 'text'] },
   ],
   anthropic: [
-    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', capabilities: ['vision', 'text', 'restoration'] },
-    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', capabilities: ['vision', 'text', 'restoration'] },
+    {
+      id: 'claude-3-5-sonnet-20241022',
+      name: 'Claude 3.5 Sonnet',
+      capabilities: ['vision', 'text', 'restoration'],
+    },
+    {
+      id: 'claude-3-opus-20240229',
+      name: 'Claude 3 Opus',
+      capabilities: ['vision', 'text', 'restoration'],
+    },
     { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', capabilities: ['vision', 'text'] },
   ],
   openai: [
@@ -39,12 +55,24 @@ const PROVIDER_MODELS: Record<string, ModelConfig[]> = {
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini', capabilities: ['vision', 'text'] },
   ],
   mistral: [
-    { id: 'pixtral-large-latest', name: 'Pixtral Large', capabilities: ['vision', 'text', 'restoration'] },
+    {
+      id: 'pixtral-large-latest',
+      name: 'Pixtral Large',
+      capabilities: ['vision', 'text', 'restoration'],
+    },
     { id: 'mistral-large-latest', name: 'Mistral Large', capabilities: ['text'] },
   ],
   groq: [
-    { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', capabilities: ['vision', 'text'] },
-    { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision', capabilities: ['vision', 'text'] },
+    {
+      id: 'llama-3.2-90b-vision-preview',
+      name: 'Llama 3.2 90B Vision',
+      capabilities: ['vision', 'text'],
+    },
+    {
+      id: 'llama-3.2-11b-vision-preview',
+      name: 'Llama 3.2 11B Vision',
+      capabilities: ['vision', 'text'],
+    },
   ],
   ollama: [
     { id: 'llama3.2:vision', name: 'Llama 3.2 Vision (Local)', capabilities: ['vision', 'text'] },
@@ -63,7 +91,7 @@ export function useOllamaModels() {
   return useQuery({
     queryKey: queryKeys.ollamaModels,
     queryFn: async (): Promise<AiModel[]> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         return mockOllamaModels;
       }
       return safeInvoke<AiModel[]>('get_ollama_models');
@@ -108,7 +136,7 @@ export function useAvailableModels() {
       }
 
       // Return mock model if no models available (browser mode)
-      if (!isTauri || models.length === 0) {
+      if (!isTauri() || models.length === 0) {
         return [mockAvailableModel];
       }
 
@@ -131,7 +159,7 @@ export function useSelectedModel() {
   return useQuery({
     queryKey: queryKeys.selectedModel,
     queryFn: async (): Promise<string> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         return localStorage.getItem(`tissaia-${SELECTED_MODEL_STORAGE_KEY}`) || DEFAULT_MODEL_ID;
       }
       const settings = await safeInvoke<AppSettings>('get_settings');
@@ -148,7 +176,7 @@ export function useSetSelectedModel() {
 
   return useMutation({
     mutationFn: async (modelId: string): Promise<string> => {
-      if (!isTauri) {
+      if (!isTauri()) {
         localStorage.setItem(`tissaia-${SELECTED_MODEL_STORAGE_KEY}`, modelId);
         return modelId;
       }

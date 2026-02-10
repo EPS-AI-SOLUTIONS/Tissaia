@@ -7,7 +7,6 @@ use state::AppState;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use log::info;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -48,6 +47,8 @@ pub fn run() {
             commands::set_api_key,
             commands::get_settings,
             commands::save_settings,
+            commands::detect_photos,
+            commands::crop_photos,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tissaia AI");

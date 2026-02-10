@@ -80,7 +80,8 @@ export const Indeterminate: Story = {
 export const LongMessage: Story = {
   args: {
     progress: 60,
-    message: 'Przetwarzanie szczegółowej analizy uszkodzeń fotografii z wykrywaniem twarzy i oceną jakości...',
+    message:
+      'Przetwarzanie szczegółowej analizy uszkodzeń fotografii z wykrywaniem twarzy i oceną jakości...',
   },
   decorators: [
     (Story) => (

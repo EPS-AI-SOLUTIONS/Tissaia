@@ -4,15 +4,25 @@
  * ===========================
  * Tests for photo restoration view.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RestoreView from '../../../components/photo/RestoreView';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock useApi hooks
 const mockMutateAsync = vi.fn();
@@ -24,7 +34,13 @@ vi.mock('../../../hooks/useApi', () => ({
   })),
   useAvailableModels: vi.fn(() => ({
     data: [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
+      {
+        id: 'gemini-2.0-flash-exp',
+        name: 'Gemini 2.0 Flash',
+        provider: 'google',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
     ],
     isLoading: false,
   })),
@@ -41,12 +57,15 @@ vi.mock('../../../hooks/useApi', () => ({
 }));
 
 // Mock sonner
-vi.mock('sonner', () => ({
-  default: Object.assign(vi.fn(), {
+vi.mock('sonner', () => {
+  const toastFn = Object.assign(vi.fn(), {
     error: vi.fn(),
     success: vi.fn(),
-  }),
-}));
+    info: vi.fn(),
+    warning: vi.fn(),
+  });
+  return { default: toastFn, toast: toastFn };
+});
 
 // Helper to render with providers
 function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
@@ -64,7 +83,7 @@ function renderWithProviders(ui: React.ReactElement, locale: string = 'pl') {
           {ui}
         </ThemeProvider>
       </I18nextProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -76,7 +95,7 @@ function createMockPhoto() {
     preview: 'data:image/jpeg;base64,test',
     size: 1024,
     mimeType: 'image/jpeg',
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
   };
 }
@@ -88,7 +107,12 @@ function createMockAnalysis() {
     timestamp: new Date().toISOString(),
     damage_score: 45,
     damage_types: [
-      { name: 'scratches', severity: 'medium' as const, description: 'Minor scratches', area_percentage: 15 },
+      {
+        name: 'scratches',
+        severity: 'medium' as const,
+        description: 'Minor scratches',
+        area_percentage: 15,
+      },
     ],
     recommendations: ['Remove scratches', 'Enhance colors'],
     provider_used: 'google',
@@ -99,7 +123,7 @@ describe('RestoreView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -124,7 +148,7 @@ describe('RestoreView', () => {
       const uploadButton = screen.getByRole('button', { name: /wgraj zdjęcie/i });
       fireEvent.click(uploadButton);
 
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
   });
 
@@ -135,7 +159,7 @@ describe('RestoreView', () => {
   describe('with photo', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
@@ -171,7 +195,7 @@ describe('RestoreView', () => {
       const backButton = screen.getByText(/wróć do analizy/i);
       fireEvent.click(backButton);
 
-      expect(useAppStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('analyze');
     });
   });
 
@@ -182,8 +206,8 @@ describe('RestoreView', () => {
   describe('with analysis', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -228,7 +252,7 @@ describe('RestoreView', () => {
   describe('without analysis', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.getState().addPhoto(createMockPhoto());
       });
     });
 
@@ -247,8 +271,8 @@ describe('RestoreView', () => {
   describe('restoration process', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -278,8 +302,8 @@ describe('RestoreView', () => {
   describe('loading state', () => {
     beforeEach(() => {
       act(() => {
-        useAppStore.getState().addPhoto(createMockPhoto());
-        useAppStore.setState({ currentAnalysis: createMockAnalysis() });
+        usePhotoStore.getState().addPhoto(createMockPhoto());
+        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -295,8 +319,10 @@ describe('RestoreView', () => {
       renderWithProviders(<RestoreView />);
 
       // The loading state message
-      expect(screen.queryByText(/AI pracuje nad Twoim zdjęciem/i) ||
-             screen.getByRole('button', { name: /rozpocznij restaurację/i })).toBeInTheDocument();
+      expect(
+        screen.queryByText(/AI pracuje nad Twoim zdjęciem/i) ||
+          screen.getByRole('button', { name: /rozpocznij restaurację/i }),
+      ).toBeInTheDocument();
     });
   });
 });

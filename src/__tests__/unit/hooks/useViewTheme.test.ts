@@ -4,8 +4,9 @@
  * ============================
  * Tests for the central view theme configuration hook.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useViewTheme, type ViewTheme } from '../../../hooks/useViewTheme';
 
 // Mock the ThemeContext
@@ -298,7 +299,7 @@ describe('useViewTheme', () => {
       const { result } = renderHook(() => useViewTheme());
 
       const theme = result.current;
-      Object.entries(theme).forEach(([key, value]) => {
+      Object.entries(theme).forEach(([_key, value]) => {
         if (typeof value === 'string') {
           expect(value.length).toBeGreaterThan(0);
         }

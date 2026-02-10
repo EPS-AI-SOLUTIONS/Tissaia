@@ -4,10 +4,11 @@
  * =============================
  * Tests for AI model selection dropdown.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { renderWithProviders } from '../../utils/renderWithProviders';
+
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ModelSelector from '../../../components/ui/ModelSelector';
+import { renderWithProviders } from '../../utils/renderWithProviders';
 
 // Mock API hooks
 const mockMutate = vi.fn();
@@ -15,10 +16,34 @@ const mockMutate = vi.fn();
 vi.mock('../../../hooks/useApi', () => ({
   useAvailableModels: vi.fn(() => ({
     data: [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic', capabilities: ['vision', 'text', 'restoration'], isAvailable: false },
-      { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', capabilities: ['vision', 'text', 'restoration'], isAvailable: true },
+      {
+        id: 'gemini-2.0-flash-exp',
+        name: 'Gemini 2.0 Flash',
+        provider: 'google',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
+      {
+        id: 'gemini-1.5-pro',
+        name: 'Gemini 1.5 Pro',
+        provider: 'google',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
+      {
+        id: 'claude-3-5-sonnet',
+        name: 'Claude 3.5 Sonnet',
+        provider: 'anthropic',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: false,
+      },
+      {
+        id: 'gpt-4o',
+        name: 'GPT-4o',
+        provider: 'openai',
+        capabilities: ['vision', 'text', 'restoration'],
+        isAvailable: true,
+      },
     ],
     isLoading: false,
   })),
@@ -272,8 +297,9 @@ describe('ModelSelector', () => {
       // Either English or fallback text should appear
       await waitFor(() => {
         // Check for dropdown being open (model description text)
-        const dropdown = screen.queryByText(/model used for|model używany/i) ||
-                        screen.queryByText(/select ai model|wybierz model/i);
+        const dropdown =
+          screen.queryByText(/model used for|model używany/i) ||
+          screen.queryByText(/select ai model|wybierz model/i);
         expect(dropdown).toBeInTheDocument();
       });
     });

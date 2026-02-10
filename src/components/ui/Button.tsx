@@ -4,9 +4,10 @@
  * ================
  * Reusable button component with variants.
  */
-import { forwardRef, type ReactNode } from 'react';
+
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
+import { forwardRef, type ReactNode } from 'react';
 import { cn } from '../../utils';
 
 // ============================================
@@ -22,7 +23,8 @@ const buttonVariants = cva(
         primary: 'btn-glow',
         secondary: 'btn-secondary',
         ghost: 'bg-transparent hover:bg-matrix-accent/10 text-matrix-text',
-        outline: 'bg-transparent border border-matrix-border hover:border-matrix-accent/50 text-matrix-text',
+        outline:
+          'bg-transparent border border-matrix-border hover:border-matrix-accent/50 text-matrix-text',
         danger: 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30',
         success: 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30',
         link: 'bg-transparent text-matrix-accent hover:underline p-0',
@@ -47,7 +49,7 @@ const buttonVariants = cva(
       size: 'md',
       fullWidth: false,
     },
-  }
+  },
 );
 
 // ============================================
@@ -78,7 +80,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <button
@@ -101,7 +103,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = 'Button';
@@ -110,8 +112,7 @@ Button.displayName = 'Button';
 // ICON BUTTON
 // ============================================
 
-export interface IconButtonProps
-  extends Omit<ButtonProps, 'leftIcon' | 'rightIcon' | 'children'> {
+export interface IconButtonProps extends Omit<ButtonProps, 'leftIcon' | 'rightIcon' | 'children'> {
   icon: ReactNode;
   'aria-label': string;
 }
@@ -123,7 +124,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {icon}
       </Button>
     );
-  }
+  },
 );
 
 IconButton.displayName = 'IconButton';

@@ -4,14 +4,24 @@
  * =======================
  * Tests for navigation sidebar with grouped navigation.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from '../../../components/Sidebar';
 import { ThemeProvider } from '../../../contexts/ThemeContext';
-import { I18nextProvider } from 'react-i18next';
 import i18n from '../../../i18n';
-import { useAppStore } from '../../../store/useAppStore';
-import { act } from 'react';
+import { useJobStore } from '../../../store/useJobStore';
+import { usePhotoStore } from '../../../store/usePhotoStore';
+import { useViewStore } from '../../../store/useViewStore';
+
+// Helper to reset all stores
+function resetStores() {
+  useViewStore.setState({ currentView: 'upload', isLoading: false, progressMessage: '' });
+  usePhotoStore.getState().resetPhotos();
+  useJobStore.setState({ currentJob: null });
+}
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -37,7 +47,7 @@ Object.defineProperty(window, 'localStorage', {
 // Helper to render with providers
 function renderWithProviders(
   ui: React.ReactElement,
-  options: { theme?: 'dark' | 'light'; locale?: string } = {}
+  options: { theme?: 'dark' | 'light'; locale?: string } = {},
 ) {
   const { theme = 'dark', locale = 'pl' } = options;
   i18n.changeLanguage(locale);
@@ -47,7 +57,7 @@ function renderWithProviders(
       <ThemeProvider defaultTheme={theme} storageKey="test-theme">
         {ui}
       </ThemeProvider>
-    </I18nextProvider>
+    </I18nextProvider>,
   );
 }
 
@@ -57,7 +67,7 @@ describe('Sidebar', () => {
     localStorageMock.clear();
     // Reset store state
     act(() => {
-      useAppStore.getState().reset();
+      resetStores();
     });
   });
 
@@ -117,26 +127,26 @@ describe('Sidebar', () => {
       renderWithProviders(<Sidebar />, { locale: 'en' });
       const uploadButton = screen.getByRole('button', { name: /Upload/i });
       fireEvent.click(uploadButton);
-      expect(useAppStore.getState().currentView).toBe('upload');
+      expect(useViewStore.getState().currentView).toBe('upload');
     });
 
     it('navigates to analyze view when clicked', () => {
       renderWithProviders(<Sidebar />, { locale: 'en' });
       const analyzeButton = screen.getByRole('button', { name: /Analy/i });
       fireEvent.click(analyzeButton);
-      expect(useAppStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('analyze');
     });
 
     it('navigates to settings view when clicked', () => {
       renderWithProviders(<Sidebar />, { locale: 'en' });
       const settingsButton = screen.getByRole('button', { name: /Settings/i });
       fireEvent.click(settingsButton);
-      expect(useAppStore.getState().currentView).toBe('settings');
+      expect(useViewStore.getState().currentView).toBe('settings');
     });
 
     it('highlights active view', () => {
       act(() => {
-        useAppStore.getState().setCurrentView('settings');
+        useViewStore.getState().setCurrentView('settings');
       });
       renderWithProviders(<Sidebar />, { locale: 'en' });
 
@@ -228,7 +238,7 @@ describe('Sidebar', () => {
 
       // Find and click the language button (contains globe icon)
       const langButtons = screen.getAllByRole('button');
-      const langButton = langButtons.find(btn => btn.textContent?.includes('PL'));
+      const langButton = langButtons.find((btn) => btn.textContent?.includes('PL'));
       expect(langButton).toBeDefined();
 
       if (langButton) {
@@ -244,7 +254,7 @@ describe('Sidebar', () => {
 
       // Open dropdown
       const langButtons = screen.getAllByRole('button');
-      const langButton = langButtons.find(btn => btn.textContent?.includes('PL'));
+      const langButton = langButtons.find((btn) => btn.textContent?.includes('PL'));
       if (langButton) {
         fireEvent.click(langButton);
 
@@ -269,13 +279,33 @@ describe('Sidebar', () => {
 
     it('displays job status when current job exists', () => {
       act(() => {
-        useAppStore.getState().setCurrentJob({
+        useJobStore.getState().setCurrentJob({
           id: 'job-1',
-          photo: { id: 'photo-1', name: 'test.jpg', path: '/test.jpg', size: 1000, preview: '' },
-          type: 'analysis',
-          status: 'processing',
+          photo: {
+            id: 'photo-1',
+            file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
+            name: 'test.jpg',
+            preview: '',
+            mimeType: 'image/jpeg',
+            size: 1000,
+            uploadedAt: new Date().toISOString(),
+          },
+          analysis: null,
+          options: {
+            removeScratches: true,
+            fixFading: true,
+            enhanceFaces: false,
+            colorize: false,
+            denoise: false,
+            sharpen: false,
+            autoCrop: false,
+          },
+          result: null,
+          status: 'analyzing',
+          error: null,
           progress: 50,
-          createdAt: Date.now(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
       });
 
@@ -286,13 +316,33 @@ describe('Sidebar', () => {
 
     it('displays job progress bar when processing', () => {
       act(() => {
-        useAppStore.getState().setCurrentJob({
+        useJobStore.getState().setCurrentJob({
           id: 'job-1',
-          photo: { id: 'photo-1', name: 'test.jpg', path: '/test.jpg', size: 1000, preview: '' },
-          type: 'analysis',
-          status: 'processing',
+          photo: {
+            id: 'photo-1',
+            file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
+            name: 'test.jpg',
+            preview: '',
+            mimeType: 'image/jpeg',
+            size: 1000,
+            uploadedAt: new Date().toISOString(),
+          },
+          analysis: null,
+          options: {
+            removeScratches: true,
+            fixFading: true,
+            enhanceFaces: false,
+            colorize: false,
+            denoise: false,
+            sharpen: false,
+            autoCrop: false,
+          },
+          result: null,
+          status: 'analyzing',
+          error: null,
           progress: 50,
-          createdAt: Date.now(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
       });
 
@@ -302,13 +352,33 @@ describe('Sidebar', () => {
 
     it('displays completed status badge', () => {
       act(() => {
-        useAppStore.getState().setCurrentJob({
+        useJobStore.getState().setCurrentJob({
           id: 'job-1',
-          photo: { id: 'photo-1', name: 'test.jpg', path: '/test.jpg', size: 1000, preview: '' },
-          type: 'analysis',
+          photo: {
+            id: 'photo-1',
+            file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
+            name: 'test.jpg',
+            preview: '',
+            mimeType: 'image/jpeg',
+            size: 1000,
+            uploadedAt: new Date().toISOString(),
+          },
+          analysis: null,
+          options: {
+            removeScratches: true,
+            fixFading: true,
+            enhanceFaces: false,
+            colorize: false,
+            denoise: false,
+            sharpen: false,
+            autoCrop: false,
+          },
+          result: null,
           status: 'completed',
+          error: null,
           progress: 100,
-          createdAt: Date.now(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
       });
 

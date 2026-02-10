@@ -4,23 +4,23 @@
  * =================
  * Tests for utility functions in src/utils/index.ts
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  clamp,
+  cn,
+  copyToClipboard,
+  createObjectURL,
+  debounce,
+  downloadFile,
   formatBytes,
   formatDuration,
   formatRelativeTime,
   generateId,
-  clamp,
-  sleep,
-  truncate,
-  copyToClipboard,
-  isImageFile,
   getFileExtension,
-  createObjectURL,
-  downloadFile,
-  debounce,
+  isImageFile,
+  sleep,
   throttle,
-  cn,
+  truncate,
 } from '../../../utils';
 
 // ============================================

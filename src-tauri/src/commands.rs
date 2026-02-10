@@ -1,6 +1,7 @@
 ﻿use crate::ai::AiProvider;
 use crate::models::{
-    AiModel, AnalysisResult, AppSettings, HealthResponse, HistoryEntry, OperationType, ProviderStatus,
+    AiModel, AnalysisResult, AppSettings, BoundingBox, CropResult, CroppedPhoto,
+    DetectionResult, HealthResponse, HistoryEntry, OperationType, ProviderStatus,
     RestorationResult,
 };
 use crate::state::AppState;
@@ -34,6 +35,7 @@ pub async fn analyze_image(
 
     let provider_name;
     let api_key;
+    let client;
 
     {
         let state_guard = state.lock().await;
@@ -60,9 +62,11 @@ pub async fn analyze_image(
                 return Err("API key not found".to_string());
             }
         };
+
+        client = state_guard.client().clone();
     }
 
-    let ai = AiProvider::new();
+    let ai = AiProvider::with_client(client);
     info!("Calling {} API...", provider_name);
 
     // Try primary provider first
@@ -162,8 +166,12 @@ pub async fn analyze_image(
 }
 
 #[tauri::command]
-pub async fn get_ollama_models() -> Result<Vec<AiModel>, String> {
-    let ai = AiProvider::new();
+pub async fn get_ollama_models(state: State<'_, AppStateHandle>) -> Result<Vec<AiModel>, String> {
+    let client = {
+        let state_guard = state.lock().await;
+        state_guard.client().clone()
+    };
+    let ai = AiProvider::with_client(client);
     ai.get_ollama_models().await.map_err(|e| e.to_string())
 }
 
@@ -176,6 +184,7 @@ pub async fn restore_image(
 ) -> Result<RestorationResult, String> {
     let provider_name;
     let api_key;
+    let client;
 
     {
         let state_guard = state.lock().await;
@@ -187,9 +196,10 @@ pub async fn restore_image(
             .get_api_key(&provider_name)
             .ok_or("API key not found")?
             .clone();
+        client = state_guard.client().clone();
     }
 
-    let ai = AiProvider::new();
+    let ai = AiProvider::with_client(client);
 
     let result = match provider_name.as_str() {
         "google" => {
@@ -279,4 +289,156 @@ pub async fn save_settings(
     Ok(())
 }
 
+// ============================================
+// PHOTO SEPARATION COMMANDS
+// ============================================
 
+#[tauri::command]
+pub async fn detect_photos(
+    state: State<'_, AppStateHandle>,
+    image_base64: String,
+    mime_type: String,
+) -> Result<DetectionResult, String> {
+    info!("=== DETECT_PHOTOS START ===");
+    info!("Image size: {} bytes, MIME type: {}", image_base64.len(), mime_type);
+
+    let provider_name;
+    let api_key;
+    let client;
+
+    {
+        let state_guard = state.lock().await;
+        provider_name = state_guard
+            .get_available_provider()
+            .ok_or("No AI provider available. Please configure an API key.")?
+            .to_string();
+        api_key = state_guard
+            .get_api_key(&provider_name)
+            .ok_or("API key not found")?
+            .clone();
+        client = state_guard.client().clone();
+    }
+
+    let ai = AiProvider::with_client(client);
+
+    // Currently only Google Gemini supports photo detection
+    let result = match provider_name.as_str() {
+        "google" => ai.detect_photo_boundaries(&api_key, &image_base64, &mime_type).await,
+        _ => {
+            // Fallback: try google if available
+            let google_key = {
+                let state_guard = state.lock().await;
+                state_guard.get_api_key("google").cloned()
+            };
+            if let Some(key) = google_key {
+                ai.detect_photo_boundaries(&key, &image_base64, &mime_type).await
+            } else {
+                Err(anyhow::anyhow!("Photo detection requires Google Gemini Vision"))
+            }
+        }
+    }
+    .map_err(|e| e.to_string())?;
+
+    info!("=== DETECT_PHOTOS END === (found {} photos)", result.photo_count);
+    Ok(result)
+}
+
+#[cfg(feature = "image-processing")]
+#[tauri::command]
+pub async fn crop_photos(
+    image_base64: String,
+    mime_type: String,
+    bounding_boxes: Vec<BoundingBox>,
+    original_filename: String,
+) -> Result<CropResult, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use image::GenericImageView;
+
+    info!("=== CROP_PHOTOS START ===");
+    info!("Boxes: {}, filename: {}", bounding_boxes.len(), original_filename);
+
+    let start = std::time::Instant::now();
+
+    // Decode base64 image
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Image decode error: {}", e))?;
+
+    let (img_width, img_height) = img.dimensions();
+    info!("Image dimensions: {}x{}", img_width, img_height);
+
+    let padding_factor = 0.02; // 2% padding
+    let mut photos = Vec::new();
+
+    for (idx, bbox) in bounding_boxes.iter().enumerate() {
+        // Convert normalized coords (0-1000) to pixel coords
+        let mut px = (bbox.x as f64 / 1000.0 * img_width as f64) as i64;
+        let mut py = (bbox.y as f64 / 1000.0 * img_height as f64) as i64;
+        let mut pw = (bbox.width as f64 / 1000.0 * img_width as f64) as i64;
+        let mut ph = (bbox.height as f64 / 1000.0 * img_height as f64) as i64;
+
+        // Add padding
+        let pad_x = (pw as f64 * padding_factor) as i64;
+        let pad_y = (ph as f64 * padding_factor) as i64;
+        px = (px - pad_x).max(0);
+        py = (py - pad_y).max(0);
+        pw = (pw + 2 * pad_x).min(img_width as i64 - px);
+        ph = (ph + 2 * pad_y).min(img_height as i64 - py);
+
+        if pw <= 0 || ph <= 0 {
+            error!("Invalid crop dimensions for box {}: {}x{}", idx, pw, ph);
+            continue;
+        }
+
+        let cropped = img.crop_imm(px as u32, py as u32, pw as u32, ph as u32);
+        let (cw, ch) = cropped.dimensions();
+
+        // Encode back to base64
+        let mut buf = std::io::Cursor::new(Vec::new());
+        let output_format = match mime_type.as_str() {
+            "image/png" => image::ImageFormat::Png,
+            "image/webp" => image::ImageFormat::WebP,
+            _ => image::ImageFormat::Jpeg,
+        };
+        cropped.write_to(&mut buf, output_format)
+            .map_err(|e| format!("Image encode error: {}", e))?;
+
+        let cropped_base64 = STANDARD.encode(buf.into_inner());
+
+        photos.push(CroppedPhoto {
+            id: uuid::Uuid::new_v4().to_string(),
+            index: idx,
+            image_base64: cropped_base64,
+            mime_type: mime_type.clone(),
+            width: cw,
+            height: ch,
+            source_box: bbox.clone(),
+        });
+
+        info!("Cropped photo {}: {}x{}", idx, cw, ch);
+    }
+
+    let result = CropResult {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        original_filename,
+        photos,
+        processing_time_ms: start.elapsed().as_millis() as u64,
+    };
+
+    info!("=== CROP_PHOTOS END === ({} photos, {}ms)", result.photos.len(), result.processing_time_ms);
+    Ok(result)
+}
+
+#[cfg(not(feature = "image-processing"))]
+#[tauri::command]
+pub async fn crop_photos(
+    _image_base64: String,
+    _mime_type: String,
+    _bounding_boxes: Vec<BoundingBox>,
+    _original_filename: String,
+) -> Result<CropResult, String> {
+    Err("Image processing feature is not enabled. Rebuild with --features image-processing".to_string())
+}

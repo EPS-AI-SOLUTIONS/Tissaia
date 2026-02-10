@@ -4,15 +4,16 @@
  * ===========================
  * Dropdown for selecting AI model for analysis/restoration.
  */
-import { useState, useRef, useEffect } from 'react';
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, ChevronDown, Cpu, Eye, Sparkles, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check, Cpu, Sparkles, Eye, Zap } from 'lucide-react';
 import {
+  type AvailableModel,
   useAvailableModels,
   useSelectedModel,
   useSetSelectedModel,
-  type AvailableModel,
 } from '../../hooks/useApi';
 
 // ============================================
@@ -27,16 +28,6 @@ const providerIcons: Record<string, React.ReactNode> = {
   groq: <Zap size={16} className="text-yellow-400" />,
   ollama: <Cpu size={16} className="text-gray-400" />,
   mock: <Cpu size={16} className="text-matrix-accent" />,
-};
-
-const providerColors: Record<string, string> = {
-  google: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  anthropic: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
-  openai: 'bg-green-500/10 text-green-400 border-green-500/30',
-  mistral: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-  groq: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-  ollama: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
-  mock: 'bg-matrix-accent/10 text-matrix-accent border-matrix-accent/30',
 };
 
 // ============================================
@@ -87,12 +78,14 @@ export default function ModelSelector({ className = '', compact = false }: Model
       acc[model.provider].push(model);
       return acc;
     },
-    {} as Record<string, AvailableModel[]>
+    {} as Record<string, AvailableModel[]>,
   );
 
   if (modelsLoading) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-2 bg-matrix-bg-secondary rounded-lg animate-pulse ${className}`}>
+      <div
+        className={`flex items-center gap-2 px-3 py-2 bg-matrix-bg-secondary rounded-lg animate-pulse ${className}`}
+      >
         <Cpu size={16} className="text-matrix-text-dim" />
         <span className="text-sm text-matrix-text-dim">Ładowanie modeli...</span>
       </div>
@@ -103,6 +96,7 @@ export default function ModelSelector({ className = '', compact = false }: Model
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Trigger Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center gap-2 px-3 py-2 rounded-lg transition-all
@@ -161,19 +155,22 @@ export default function ModelSelector({ className = '', compact = false }: Model
                     <div className="space-y-1">
                       {providerModels.map((model) => (
                         <button
+                          type="button"
                           key={model.id}
                           onClick={() => handleSelect(model)}
                           disabled={!model.isAvailable}
                           className={`
                             w-full flex items-center gap-3 px-3 py-2 rounded-lg
                             transition-all text-left
-                            ${model.isAvailable
-                              ? 'hover:bg-matrix-accent/10 cursor-pointer'
-                              : 'opacity-50 cursor-not-allowed'
+                            ${
+                              model.isAvailable
+                                ? 'hover:bg-matrix-accent/10 cursor-pointer'
+                                : 'opacity-50 cursor-not-allowed'
                             }
-                            ${selectedModelId === model.id
-                              ? 'bg-matrix-accent/20 border border-matrix-accent/50'
-                              : 'border border-transparent'
+                            ${
+                              selectedModelId === model.id
+                                ? 'bg-matrix-accent/20 border border-matrix-accent/50'
+                                : 'border border-transparent'
                             }
                           `}
                         >

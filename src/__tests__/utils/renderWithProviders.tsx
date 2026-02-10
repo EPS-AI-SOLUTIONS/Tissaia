@@ -4,9 +4,11 @@
  * ===================
  * Wraps components with necessary providers for testing.
  */
-import React, { ReactElement } from 'react';
-import { render, RenderOptions, RenderResult } from '@testing-library/react';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type RenderOptions, type RenderResult, render } from '@testing-library/react';
+import type React from 'react';
+import type { ReactElement } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { ThemeProvider } from '../../contexts/ThemeContext';
 import i18n from '../../i18n';
@@ -55,7 +57,7 @@ export function renderWithProviders(
     defaultTheme = 'dark',
     locale = 'pl',
     ...renderOptions
-  }: CustomRenderOptions = {}
+  }: CustomRenderOptions = {},
 ): RenderResult & { queryClient: QueryClient } {
   // Set i18n language
   i18n.changeLanguage(locale);
@@ -64,18 +66,18 @@ export function renderWithProviders(
     return (
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
-          <ThemeProvider defaultTheme={defaultTheme}>
-            {children}
-          </ThemeProvider>
+          <ThemeProvider defaultTheme={defaultTheme}>{children}</ThemeProvider>
         </I18nextProvider>
       </QueryClientProvider>
     );
   }
 
+  const renderResult = render(ui, { wrapper: Wrapper, ...renderOptions });
+
   return {
-    ...render(ui, { wrapper: Wrapper, ...renderOptions }),
+    ...renderResult,
     queryClient,
-  };
+  } as RenderResult & { queryClient: QueryClient };
 }
 
 // ============================================
@@ -84,20 +86,18 @@ export function renderWithProviders(
 
 export function renderWithQueryClient(
   ui: ReactElement,
-  queryClient = createTestQueryClient()
+  queryClient = createTestQueryClient(),
 ): RenderResult & { queryClient: QueryClient } {
   function Wrapper({ children }: WrapperProps) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
 
+  const renderResult = render(ui, { wrapper: Wrapper });
+
   return {
-    ...render(ui, { wrapper: Wrapper }),
+    ...renderResult,
     queryClient,
-  };
+  } as RenderResult & { queryClient: QueryClient };
 }
 
 // ============================================
@@ -106,14 +106,10 @@ export function renderWithQueryClient(
 
 export function renderWithTheme(
   ui: ReactElement,
-  defaultTheme: 'dark' | 'light' | 'system' = 'dark'
+  defaultTheme: 'dark' | 'light' | 'system' = 'dark',
 ): RenderResult {
   function Wrapper({ children }: WrapperProps) {
-    return (
-      <ThemeProvider defaultTheme={defaultTheme}>
-        {children}
-      </ThemeProvider>
-    );
+    return <ThemeProvider defaultTheme={defaultTheme}>{children}</ThemeProvider>;
   }
 
   return render(ui, { wrapper: Wrapper });

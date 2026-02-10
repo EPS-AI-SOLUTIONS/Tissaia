@@ -3,8 +3,9 @@
  * useKeyboardShortcuts Hook Tests
  * ================================
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useKeyboardShortcuts } from '../../../hooks/useKeyboardShortcuts';
 
 // Helper to create keyboard events
@@ -15,7 +16,7 @@ function createKeyboardEvent(
     shiftKey?: boolean;
     altKey?: boolean;
     metaKey?: boolean;
-  } = {}
+  } = {},
 ): KeyboardEvent {
   return new KeyboardEvent('keydown', {
     key,
@@ -41,8 +42,8 @@ describe('useKeyboardShortcuts', () => {
       useKeyboardShortcuts({
         'ctrl+s': callback1,
         'ctrl+n': callback2,
-        'escape': callback3,
-      })
+        escape: callback3,
+      }),
     );
 
     window.dispatchEvent(createKeyboardEvent('s', { ctrlKey: true }));
@@ -63,7 +64,7 @@ describe('useKeyboardShortcuts', () => {
       useKeyboardShortcuts({
         'ctrl+s': saveCallback,
         'ctrl+n': newCallback,
-      })
+      }),
     );
 
     // Trigger ctrl+s
@@ -80,7 +81,7 @@ describe('useKeyboardShortcuts', () => {
     const { result } = renderHook(() =>
       useKeyboardShortcuts({
         'ctrl+s': initialCallback,
-      })
+      }),
     );
 
     // Register new shortcut
@@ -100,7 +101,7 @@ describe('useKeyboardShortcuts', () => {
     const { result } = renderHook(() =>
       useKeyboardShortcuts({
         'ctrl+s': callback,
-      })
+      }),
     );
 
     // Trigger shortcut - should work
@@ -125,7 +126,7 @@ describe('useKeyboardShortcuts', () => {
       useKeyboardShortcuts({
         'ctrl+s': callback1,
         'ctrl+shift+s': callback2,
-      })
+      }),
     );
 
     // Trigger ctrl+s (should only match the first)
@@ -140,12 +141,8 @@ describe('useKeyboardShortcuts', () => {
     const callback = vi.fn();
 
     const { rerender } = renderHook(
-      ({ enabled }) =>
-        useKeyboardShortcuts(
-          { 'ctrl+s': callback },
-          { enabled }
-        ),
-      { initialProps: { enabled: true } }
+      ({ enabled }) => useKeyboardShortcuts({ 'ctrl+s': callback }, { enabled }),
+      { initialProps: { enabled: true } },
     );
 
     // Trigger while enabled
@@ -185,12 +182,7 @@ describe('useKeyboardShortcuts', () => {
   it('prevents default when configured', () => {
     const callback = vi.fn();
 
-    renderHook(() =>
-      useKeyboardShortcuts(
-        { 'ctrl+s': callback },
-        { preventDefault: true }
-      )
-    );
+    renderHook(() => useKeyboardShortcuts({ 'ctrl+s': callback }, { preventDefault: true }));
 
     const event = createKeyboardEvent('s', { ctrlKey: true });
     const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
@@ -203,12 +195,7 @@ describe('useKeyboardShortcuts', () => {
   it('stops propagation when configured', () => {
     const callback = vi.fn();
 
-    renderHook(() =>
-      useKeyboardShortcuts(
-        { 'ctrl+s': callback },
-        { stopPropagation: true }
-      )
-    );
+    renderHook(() => useKeyboardShortcuts({ 'ctrl+s': callback }, { stopPropagation: true }));
 
     const event = createKeyboardEvent('s', { ctrlKey: true });
     const stopPropagationSpy = vi.spyOn(event, 'stopPropagation');
@@ -237,10 +224,9 @@ describe('useKeyboardShortcuts', () => {
     const callback1 = vi.fn();
     const callback2 = vi.fn();
 
-    const { rerender } = renderHook(
-      ({ shortcuts }) => useKeyboardShortcuts(shortcuts),
-      { initialProps: { shortcuts: { 'ctrl+s': callback1 } } }
-    );
+    const { rerender } = renderHook(({ shortcuts }) => useKeyboardShortcuts(shortcuts), {
+      initialProps: { shortcuts: { 'ctrl+s': callback1 } },
+    });
 
     // Trigger with initial shortcuts
     window.dispatchEvent(createKeyboardEvent('s', { ctrlKey: true }));

@@ -60,7 +60,7 @@ chrono = { version = "0.4", features = ["serde"] }
 image = { version = "0.25", optional = true }
 
 [features]
-default = []
+default = ["image-processing"]
 image-processing = ["image"]
 
 [profile.release]

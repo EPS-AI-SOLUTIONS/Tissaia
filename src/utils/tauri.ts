@@ -6,27 +6,11 @@
  */
 
 /**
- * Check if running in Tauri environment
+ * Check if running in Tauri environment.
+ * This is a function (not a const) so it re-evaluates every call.
+ * WebView2 may inject the __TAURI__ bridge asynchronously after module load.
  */
-export const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-
-/**
- * Safe invoke wrapper that returns undefined when not in Tauri
- */
-export async function safeInvoke<T>(
-  command: string,
-  args?: Record<string, unknown>
-): Promise<T | undefined> {
-  if (!isTauri) {
-    console.warn(`[Tauri] Command "${command}" skipped - not running in Tauri`);
-    return undefined;
-  }
-
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    return invoke<T>(command, args);
-  } catch (error) {
-    console.error(`[Tauri] Failed to invoke "${command}":`, error);
-    throw error;
-  }
+// Legacy: export const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+export function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI__' in window;
 }

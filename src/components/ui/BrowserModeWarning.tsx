@@ -5,8 +5,9 @@
  * Displays a warning when the app is running in browser mode
  * instead of the Tauri desktop application.
  */
+
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const SESSION_STORAGE_KEY = 'tissaia-browser-warning-dismissed';
@@ -48,9 +49,10 @@ export default function BrowserModeWarning() {
         transition={{ duration: 0.3 }}
         className={`
           relative overflow-hidden
-          ${isLight
-            ? 'bg-amber-50/90 border-amber-300/50 text-amber-900'
-            : 'bg-amber-900/20 border-amber-500/30 text-amber-200'
+          ${
+            isLight
+              ? 'bg-amber-50/90 border-amber-300/50 text-amber-900'
+              : 'bg-amber-900/20 border-amber-500/30 text-amber-200'
           }
           border-b backdrop-blur-sm
         `}
@@ -82,6 +84,7 @@ export default function BrowserModeWarning() {
                 stroke="currentColor"
                 strokeWidth={2}
               >
+                <title>Warning icon</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -91,24 +94,31 @@ export default function BrowserModeWarning() {
             </motion.div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <span className={`font-semibold text-sm ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
+              <span
+                className={`font-semibold text-sm ${isLight ? 'text-amber-800' : 'text-amber-300'}`}
+              >
                 Tryb przegladarki
               </span>
               <span className={`text-sm ${isLight ? 'text-amber-700' : 'text-amber-200/80'}`}>
                 Funkcje AI wymagaja aplikacji desktopowej.
-                <span className="hidden sm:inline"> Pobierz aplikacje Tissaia-AI, aby korzystac z pelnych mozliwosci.</span>
+                <span className="hidden sm:inline">
+                  {' '}
+                  Pobierz aplikacje Tissaia-AI, aby korzystac z pelnych mozliwosci.
+                </span>
               </span>
             </div>
           </div>
 
           {/* Dismiss button */}
           <button
+            type="button"
             onClick={handleDismiss}
             className={`
               flex-shrink-0 p-1.5 rounded-md transition-all duration-200
-              ${isLight
-                ? 'hover:bg-amber-200/50 text-amber-600 hover:text-amber-800'
-                : 'hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'
+              ${
+                isLight
+                  ? 'hover:bg-amber-200/50 text-amber-600 hover:text-amber-800'
+                  : 'hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'
               }
               focus:outline-none focus:ring-2 focus:ring-[#00ff41]/50
             `}
@@ -121,11 +131,8 @@ export default function BrowserModeWarning() {
               stroke="currentColor"
               strokeWidth={2}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <title>Close icon</title>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
