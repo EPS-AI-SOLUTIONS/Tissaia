@@ -10,28 +10,6 @@
  */
 
 // ============================================
-// DAMAGE & ANALYSIS TYPES
-// ============================================
-
-export type DamageSeverity = 'low' | 'medium' | 'high' | 'critical';
-
-export interface DamageType {
-  name: string;
-  severity: DamageSeverity;
-  description: string;
-  area_percentage: number;
-}
-
-export interface AnalysisResult {
-  id: string;
-  timestamp: string;
-  damage_score: number;
-  damage_types: DamageType[];
-  recommendations: string[];
-  provider_used: string;
-}
-
-// ============================================
 // RESTORATION TYPES
 // ============================================
 
@@ -49,7 +27,7 @@ export interface RestorationResult {
 // HISTORY TYPES
 // ============================================
 
-export type OperationType = 'analysis' | 'restoration' | 'photoseparation';
+export type OperationType = 'restoration' | 'photoseparation';
 
 export interface HistoryEntry {
   id: string;
@@ -152,18 +130,4 @@ export interface CropResult {
   original_filename: string;
   photos: CroppedPhoto[];
   processing_time_ms: number;
-}
-
-// ============================================
-// WORKFLOW TYPES
-// ============================================
-
-export interface WorkflowProgress {
-  stage: 'analyzing' | 'restoring';
-  progress: number;
-}
-
-export interface WorkflowResult {
-  analysis: AnalysisResult;
-  result: RestorationResult;
 }

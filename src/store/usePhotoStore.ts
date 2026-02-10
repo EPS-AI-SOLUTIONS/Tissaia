@@ -2,7 +2,7 @@
 /**
  * Photo & Pipeline Store
  * ======================
- * Photo management, temporary analysis/restoration results, and pipeline state.
+ * Photo management, temporary restoration results, and pipeline state.
  */
 import { create } from 'zustand';
 import type { PhotoFile } from '../types';
@@ -17,15 +17,14 @@ interface PhotoState {
   removePhoto: (id: string) => void;
   clearPhotos: () => void;
 
-  currentAnalysis: unknown | null;
   restorationResult: unknown | null;
 
   detectionResult: unknown | null;
   setDetectionResult: (result: unknown | null) => void;
   croppedPhotos: unknown[];
   setCroppedPhotos: (photos: unknown[]) => void;
-  pipelineResults: Record<string, { analysis: unknown; restoration: unknown }>;
-  setPipelineResult: (photoId: string, analysis: unknown, restoration: unknown) => void;
+  pipelineResults: Record<string, { restoration: unknown }>;
+  setPipelineResult: (photoId: string, restoration: unknown) => void;
   clearPipelineResults: () => void;
 
   resetPhotos: () => void;
@@ -47,7 +46,6 @@ export const usePhotoStore = create<PhotoState>()((set) => ({
     })),
   clearPhotos: () => set({ photos: [] }),
 
-  currentAnalysis: null,
   restorationResult: null,
 
   detectionResult: null,
@@ -55,11 +53,11 @@ export const usePhotoStore = create<PhotoState>()((set) => ({
   croppedPhotos: [],
   setCroppedPhotos: (photos) => set({ croppedPhotos: photos }),
   pipelineResults: {},
-  setPipelineResult: (photoId, analysis, restoration) =>
+  setPipelineResult: (photoId, restoration) =>
     set((state) => ({
       pipelineResults: {
         ...state.pipelineResults,
-        [photoId]: { analysis, restoration },
+        [photoId]: { restoration },
       },
     })),
   clearPipelineResults: () => set({ pipelineResults: {} }),
@@ -67,7 +65,6 @@ export const usePhotoStore = create<PhotoState>()((set) => ({
   resetPhotos: () =>
     set({
       photos: [],
-      currentAnalysis: null,
       restorationResult: null,
       detectionResult: null,
       croppedPhotos: [],

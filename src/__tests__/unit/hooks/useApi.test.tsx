@@ -42,12 +42,10 @@ vi.mock('sonner', () => {
 
 // Import after mocks are set up
 import {
-  type AnalysisResult,
   type AppSettings,
   type HealthResponse,
   type ProviderStatus,
   queryKeys,
-  useAnalyzeImage,
   useClearHistory,
   useDefaultModel,
   useHealth,
@@ -55,7 +53,6 @@ import {
   useModels,
   useOllamaModels,
   useProvidersStatus,
-  useRestorationWorkflow,
   useRestoreImage,
   useSaveSettings,
   useSetApiKey,
@@ -82,17 +79,6 @@ const mockProvidersStatus: ProviderStatus[] = [
   { name: 'anthropic', enabled: true, available: true, priority: 2, last_error: null },
   { name: 'openai', enabled: false, available: false, priority: 3, last_error: 'No API key' },
 ];
-
-const mockAnalysisResult: AnalysisResult = {
-  id: 'analysis-123',
-  timestamp: new Date().toISOString(),
-  damage_score: 45,
-  damage_types: [
-    { name: 'scratches', severity: 'medium', description: 'Minor scratches', area_percentage: 15 },
-  ],
-  recommendations: ['Remove scratches', 'Restore colors'],
-  provider_used: 'google',
-};
 
 const mockSettings: AppSettings = {
   language: 'pl',
@@ -194,30 +180,6 @@ describe('useApi hooks', () => {
       expect(result.current.data?.[0].name).toBe('google');
       expect(result.current.data?.[0].available).toBe(false);
       expect(result.current.data?.[0].last_error).toBe('Tauri is required');
-    });
-  });
-
-  // ============================================
-  // useAnalyzeImage (Browser Mode)
-  // ============================================
-
-  describe('useAnalyzeImage', () => {
-    it('returns isPending state initially false', () => {
-      const { Wrapper } = createWrapper();
-
-      const { result } = renderHook(() => useAnalyzeImage(), { wrapper: Wrapper });
-
-      expect(result.current.isPending).toBe(false);
-      expect(result.current.isIdle).toBe(true);
-    });
-
-    it('provides mutate function', () => {
-      const { Wrapper } = createWrapper();
-
-      const { result } = renderHook(() => useAnalyzeImage(), { wrapper: Wrapper });
-
-      expect(typeof result.current.mutate).toBe('function');
-      expect(typeof result.current.mutateAsync).toBe('function');
     });
   });
 
@@ -344,35 +306,6 @@ describe('useApi hooks', () => {
   });
 
   // ============================================
-  // useRestorationWorkflow
-  // ============================================
-
-  describe('useRestorationWorkflow', () => {
-    it('provides workflow state', () => {
-      const { Wrapper } = createWrapper();
-
-      const { result } = renderHook(() => useRestorationWorkflow(), { wrapper: Wrapper });
-
-      expect(result.current.isAnalyzing).toBe(false);
-      expect(result.current.isRestoring).toBe(false);
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.analysisError).toBeNull();
-      expect(result.current.restoreError).toBeNull();
-      expect(typeof result.current.runWorkflow).toBe('function');
-      expect(typeof result.current.reset).toBe('function');
-    });
-
-    it('provides reset function', () => {
-      const { Wrapper } = createWrapper();
-
-      const { result } = renderHook(() => useRestorationWorkflow(), { wrapper: Wrapper });
-
-      // Just verify reset is a function and doesn't throw
-      expect(() => result.current.reset()).not.toThrow();
-    });
-  });
-
-  // ============================================
   // LEGACY COMPATIBILITY HOOKS
   // ============================================
 
@@ -437,12 +370,10 @@ describe('useApi hooks', () => {
       // This test verifies that types are properly exported
       const healthResponse: HealthResponse = mockHealthResponse;
       const providersStatus: ProviderStatus[] = mockProvidersStatus;
-      const analysisResult: AnalysisResult = mockAnalysisResult;
       const settings: AppSettings = mockSettings;
 
       expect(healthResponse).toBeDefined();
       expect(providersStatus).toBeDefined();
-      expect(analysisResult).toBeDefined();
       expect(settings).toBeDefined();
     });
   });

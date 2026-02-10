@@ -108,7 +108,7 @@ export default function HistoryView() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold capitalize ${theme.title}`}>
-                        {entry.operation === 'analysis' ? 'Analiza' : 'Restauracja'}
+                        {entry.operation === 'photoseparation' ? 'Separacja' : 'Restauracja'}
                       </h3>
 
                       <div className={`flex items-center gap-4 mt-1 text-sm ${theme.textMuted}`}>

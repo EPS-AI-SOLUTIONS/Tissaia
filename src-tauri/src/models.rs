@@ -3,33 +3,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnalysisResult {
-    pub id: String,
-    pub timestamp: DateTime<Utc>,
-    pub damage_score: f32,
-    pub damage_types: Vec<DamageType>,
-    pub recommendations: Vec<String>,
-    pub provider_used: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DamageType {
-    pub name: String,
-    pub severity: Severity,
-    pub description: String,
-    pub area_percentage: f32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Severity {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RestorationResult {
     pub id: String,
     pub timestamp: DateTime<Utc>,
@@ -55,7 +28,6 @@ pub struct HistoryEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationType {
-    Analysis,
     Restoration,
     PhotoSeparation,
 }
@@ -96,19 +68,6 @@ pub struct HealthResponse {
     pub version: String,
     pub providers: Vec<ProviderStatus>,
     pub uptime_seconds: u64,
-}
-
-impl AnalysisResult {
-    pub fn new(provider: &str) -> Self {
-        Self {
-            id: Uuid::new_v4().to_string(),
-            timestamp: Utc::now(),
-            damage_score: 0.0,
-            damage_types: Vec::new(),
-            recommendations: Vec::new(),
-            provider_used: provider.to_string(),
-        }
-    }
 }
 
 impl RestorationResult {

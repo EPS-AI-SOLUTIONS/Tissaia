@@ -5,7 +5,6 @@
  * Centralized exports for all UI components.
  */
 
-export { default as AnalysisProgressBar } from './AnalysisProgressBar';
 export type { BadgeProps } from './Badge';
 // Badge Component
 export { Badge, CapabilityBadge, ProviderBadge, SeverityBadge } from './Badge';

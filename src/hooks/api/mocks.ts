@@ -6,7 +6,6 @@
  */
 import type {
   AiModel,
-  AnalysisResult,
   AppSettings,
   AvailableModel,
   DetectionResult,
@@ -46,32 +45,6 @@ export const mockSettings: AppSettings = {
   auto_save: true,
   output_quality: 85,
   preferred_provider: null,
-};
-
-// ============================================
-// ANALYSIS
-// ============================================
-
-export const mockAnalysisResult: AnalysisResult = {
-  id: 'mock-analysis-id',
-  timestamp: new Date().toISOString(),
-  damage_score: 45,
-  damage_types: [
-    {
-      name: 'discoloration',
-      severity: 'medium',
-      description: 'Color fading detected',
-      area_percentage: 30,
-    },
-    {
-      name: 'scratches',
-      severity: 'low',
-      description: 'Minor scratches',
-      area_percentage: 5,
-    },
-  ],
-  recommendations: ['Color correction', 'Scratch removal'],
-  provider_used: 'mock-provider',
 };
 
 // ============================================
@@ -130,7 +103,6 @@ export const mockDetectionResult: DetectionResult = {
 // ============================================
 
 export const DEFAULT_MODEL_ID = 'gemini-2.0-flash-exp';
-export const MOCK_ANALYSIS_DELAY = 2000;
 export const MOCK_RESTORATION_DELAY = 3000;
 export const MOCK_DETECTION_DELAY = 1500;
 export const MOCK_CROP_DELAY = 1000;

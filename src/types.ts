@@ -11,7 +11,6 @@
 export type View =
   | 'upload' // Main photo upload view
   | 'crop' // Photo separation from scans
-  | 'analyze' // Photo analysis view
   | 'restore' // Restoration in progress
   | 'results' // Restoration results
   | 'history' // Past restorations

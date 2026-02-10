@@ -9,19 +9,13 @@ export type {
   // Model Types
   AiModel,
   // Core Types
-  AnalysisResult,
   AppSettings as ApiAppSettings,
   AvailableModel,
-  DamageSeverity,
-  DamageType,
   HealthResponse as ApiHealthResponse,
   HistoryEntry as ApiHistoryEntry,
   ModelCapability,
   ProviderStatus as ApiProviderStatus,
   RestorationResult as ApiRestorationResult,
-  // Workflow Types
-  WorkflowProgress,
-  WorkflowResult,
 } from './useApi';
 // API Hooks (Tauri) - Modular Exports
 export {
@@ -30,8 +24,6 @@ export {
   queryKeys,
   // Utilities
   safeInvoke,
-  // Analysis
-  useAnalyzeImage,
   useAvailableModels,
   useClearHistory,
   useDefaultModel,
@@ -43,7 +35,6 @@ export {
   useModels,
   useOllamaModels,
   useProvidersStatus,
-  useRestorationWorkflow,
   // Restoration
   useRestoreImage,
   useSaveSettings,

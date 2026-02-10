@@ -10,7 +10,6 @@ import {
   type LucideIcon,
   Moon,
   Scissors,
-  Search,
   Settings,
   Sparkles,
   Sun,
@@ -128,7 +127,6 @@ export default function Sidebar() {
       items: [
         { id: 'upload', icon: Upload, label: t('nav.upload', 'Wgraj') },
         { id: 'crop', icon: Scissors, label: t('nav.crop', 'Rozdziel') },
-        { id: 'analyze', icon: Search, label: t('nav.analyze', 'Analiza') },
         { id: 'restore', icon: Sparkles, label: t('nav.restore', 'Restauracja') },
         { id: 'results', icon: CheckCircle, label: t('nav.results', 'Wyniki') },
       ],

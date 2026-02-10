@@ -75,31 +75,6 @@ function createMockPhoto() {
   };
 }
 
-// Create mock analysis
-function createMockAnalysis() {
-  return {
-    id: 'analysis-1',
-    timestamp: new Date().toISOString(),
-    damage_score: 65,
-    damage_types: [
-      {
-        name: 'scratches',
-        severity: 'medium' as const,
-        description: 'Surface scratches',
-        area_percentage: 20,
-      },
-      {
-        name: 'fading',
-        severity: 'low' as const,
-        description: 'Color fading',
-        area_percentage: 35,
-      },
-    ],
-    recommendations: ['Remove scratches', 'Enhance colors', 'Apply sharpening'],
-    provider_used: 'google',
-  };
-}
-
 // Create mock restoration result
 function createMockRestorationResult() {
   return {
@@ -161,47 +136,6 @@ describe('Restoration Workflow', () => {
   });
 
   // ============================================
-  // WITH ANALYSIS RESULTS
-  // ============================================
-
-  describe('With Analysis Results', () => {
-    beforeEach(() => {
-      act(() => {
-        usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
-      });
-    });
-
-    it('displays damage score from analysis', () => {
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-      expect(screen.getByText(/65%/)).toBeInTheDocument();
-    });
-
-    it('displays detected problems count', () => {
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-      expect(screen.getByText(/wykryte problemy.*2/i)).toBeInTheDocument();
-    });
-
-    it('displays provider used', () => {
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-      expect(screen.getByText(/provider.*google/i)).toBeInTheDocument();
-    });
-
-    it('displays all recommendations', () => {
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-      expect(screen.getByText('Remove scratches')).toBeInTheDocument();
-      expect(screen.getByText('Enhance colors')).toBeInTheDocument();
-      expect(screen.getByText('Apply sharpening')).toBeInTheDocument();
-    });
-
-    it('enables start restoration button', () => {
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-      const restoreButton = screen.getByRole('button', { name: /rozpocznij restaurację/i });
-      expect(restoreButton).not.toBeDisabled();
-    });
-  });
-
-  // ============================================
   // RESTORATION PROCESS
   // ============================================
 
@@ -209,7 +143,6 @@ describe('Restoration Workflow', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -224,10 +157,6 @@ describe('Restoration Workflow', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith({
           file: expect.any(File),
-          analysis: expect.objectContaining({
-            id: 'analysis-1',
-            damage_score: 65,
-          }),
         });
       });
     });
@@ -244,21 +173,6 @@ describe('Restoration Workflow', () => {
         const callArgs = mockMutateAsync.mock.calls[0][0];
         expect(callArgs.file.name).toBe('test-restoration.jpg');
         expect(callArgs.file.type).toBe('image/jpeg');
-      });
-    });
-
-    it('passes analysis to mutation', async () => {
-      mockMutateAsync.mockResolvedValueOnce(createMockRestorationResult());
-
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-
-      const restoreButton = screen.getByRole('button', { name: /rozpocznij restaurację/i });
-      fireEvent.click(restoreButton);
-
-      await waitFor(() => {
-        const callArgs = mockMutateAsync.mock.calls[0][0];
-        expect(callArgs.analysis.damage_types).toHaveLength(2);
-        expect(callArgs.analysis.recommendations).toHaveLength(3);
       });
     });
   });
@@ -287,20 +201,16 @@ describe('Restoration Workflow', () => {
       expect(useViewStore.getState().currentView).toBe('upload');
     });
 
-    it('navigates back to analyze when back button clicked', () => {
+    it('navigates back to crop when back button clicked', () => {
       renderWithProviders(<RestoreView />, { locale: 'pl' });
 
-      const backButton = screen.getByText(/wróć do analizy/i);
+      const backButton = screen.getByText(/wróć do kadrowania/i);
       fireEvent.click(backButton);
 
-      expect(useViewStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('crop');
     });
 
     it('navigates to results after successful restoration', async () => {
-      act(() => {
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
-      });
-
       mockMutateAsync.mockResolvedValueOnce(createMockRestorationResult());
 
       renderWithProviders(<RestoreView />, { locale: 'pl' });
@@ -322,7 +232,6 @@ describe('Restoration Workflow', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -370,19 +279,6 @@ describe('Restoration Workflow', () => {
       // Should show "no photo" message
       expect(screen.getByText(/brak zdjęcia do restauracji/i)).toBeInTheDocument();
     });
-
-    it('disables restore button when missing analysis', async () => {
-      // Clear analysis
-      act(() => {
-        usePhotoStore.setState({ currentAnalysis: null });
-      });
-
-      renderWithProviders(<RestoreView />, { locale: 'pl' });
-
-      // Start button should exist but be disabled
-      const restoreButton = screen.getByRole('button', { name: /rozpocznij restaurację/i });
-      expect(restoreButton).toBeDisabled();
-    });
   });
 
   // ============================================
@@ -393,19 +289,18 @@ describe('Restoration Workflow', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
     it('renders in Polish', () => {
       renderWithProviders(<RestoreView />, { locale: 'pl' });
-      expect(screen.getByText(/opcje restauracji/i)).toBeInTheDocument();
-      expect(screen.getByText(/wróć do analizy/i)).toBeInTheDocument();
+      expect(screen.getByText(/wróć do kadrowania/i)).toBeInTheDocument();
     });
 
     it('renders in English', () => {
       renderWithProviders(<RestoreView />, { locale: 'en' });
-      expect(screen.getByText(/restoration options/i)).toBeInTheDocument();
+      // RestoreView should render with photo present
+      expect(screen.getByText('test-restoration.jpg')).toBeInTheDocument();
     });
   });
 });

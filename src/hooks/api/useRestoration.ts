@@ -8,8 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '../../utils/tauri';
 import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from './mocks';
 import { queryKeys } from './queryKeys';
-import type { AnalysisResult, RestorationResult, WorkflowResult } from './types';
-import { useAnalyzeImage } from './useAnalysis';
+import type { RestorationResult } from './types';
 import { delay, fileToBase64, safeInvoke } from './utils';
 
 // ============================================
@@ -18,7 +17,6 @@ import { delay, fileToBase64, safeInvoke } from './utils';
 
 export interface RestoreImageParams {
   file: File;
-  analysis: AnalysisResult;
 }
 
 /**
@@ -28,7 +26,7 @@ export function useRestoreImage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file, analysis }: RestoreImageParams): Promise<RestorationResult> => {
+    mutationFn: async ({ file }: RestoreImageParams): Promise<RestorationResult> => {
       if (!isTauri()) {
         // Mock restoration for browser/test mode
         await delay(MOCK_RESTORATION_DELAY);
@@ -40,61 +38,10 @@ export function useRestoreImage() {
       return safeInvoke<RestorationResult>('restore_image', {
         imageBase64: base64,
         mimeType,
-        analysis,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.history });
     },
   });
-}
-
-// ============================================
-// RESTORATION WORKFLOW
-// ============================================
-
-export type WorkflowProgressCallback = (stage: string, progress: number) => void;
-
-/**
- * Full restoration workflow: analyze + restore
- */
-export function useRestorationWorkflow() {
-  const analyzeMutation = useAnalyzeImage();
-  const restoreMutation = useRestoreImage();
-
-  const runWorkflow = async (
-    file: File,
-    onProgress?: WorkflowProgressCallback,
-  ): Promise<WorkflowResult> => {
-    // Stage 1: Analyze
-    onProgress?.('analyzing', 0);
-    const analysisResult = await analyzeMutation.mutateAsync({ file });
-    onProgress?.('analyzing', 100);
-
-    // Stage 2: Restore
-    onProgress?.('restoring', 0);
-    const restoreResult = await restoreMutation.mutateAsync({
-      file,
-      analysis: analysisResult,
-    });
-    onProgress?.('restoring', 100);
-
-    return {
-      analysis: analysisResult,
-      result: restoreResult,
-    };
-  };
-
-  return {
-    runWorkflow,
-    isAnalyzing: analyzeMutation.isPending,
-    isRestoring: restoreMutation.isPending,
-    isLoading: analyzeMutation.isPending || restoreMutation.isPending,
-    analysisError: analyzeMutation.error,
-    restoreError: restoreMutation.error,
-    reset: () => {
-      analyzeMutation.reset();
-      restoreMutation.reset();
-    },
-  };
 }

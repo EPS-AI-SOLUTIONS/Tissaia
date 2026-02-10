@@ -10,7 +10,7 @@ import { CheckCircle, Clock, Download, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useViewTheme } from '../../hooks';
-import type { AnalysisResult, CroppedPhoto, RestorationResult } from '../../hooks/api/types';
+import type { CroppedPhoto, RestorationResult } from '../../hooks/api/types';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
 import PhotoPreview from '../ui/PhotoPreview';
@@ -22,13 +22,12 @@ import PhotoPreview from '../ui/PhotoPreview';
 interface ResultCardProps {
   index: number;
   total: number;
-  analysis: AnalysisResult;
   restoration: RestorationResult;
   croppedPhoto?: CroppedPhoto;
   theme: ReturnType<typeof useViewTheme>;
 }
 
-function ResultCard({ index, total, analysis, restoration, theme }: ResultCardProps) {
+function ResultCard({ index, total, restoration, theme }: ResultCardProps) {
   const handleDownload = () => {
     if (!restoration.restored_image) {
       toast.error('Brak zdjęcia do pobrania');
@@ -85,11 +84,7 @@ function ResultCard({ index, total, analysis, restoration, theme }: ResultCardPr
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className={`p-2 rounded-lg ${theme.accentBg}`}>
-          <div className={`text-lg font-bold ${theme.textAccent}`}>{analysis.damage_score}%</div>
-          <div className={`text-[10px] ${theme.textMuted}`}>Uszkodzenia</div>
-        </div>
+      <div className="grid grid-cols-2 gap-2 text-center">
         <div className={`p-2 rounded-lg ${theme.accentBg}`}>
           <div className={`text-lg font-bold ${theme.textAccent}`}>
             {restoration.improvements.length}
@@ -156,7 +151,6 @@ export default function ResultsView() {
   const handleNewPhoto = () => {
     usePhotoStore.setState({
       photos: [],
-      currentAnalysis: null,
       restorationResult: null,
     });
     usePhotoStore.getState().clearPipelineResults();
@@ -344,7 +338,6 @@ export default function ResultsView() {
                 key={photoId}
                 index={idx}
                 total={pipelineEntries.length}
-                analysis={entry.analysis as AnalysisResult}
                 restoration={entry.restoration as RestorationResult}
                 croppedPhoto={cropped}
                 theme={theme}

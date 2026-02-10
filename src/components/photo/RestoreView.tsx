@@ -3,13 +3,14 @@
  * Photo Restoration View - Tauri Edition
  * =======================================
  * Configure and run photo restoration.
+ * AI automatically detects damage during restoration.
  */
 
 import { Play, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { type AnalysisResult, useRestoreImage } from '../../hooks/useApi';
+import { useRestoreImage } from '../../hooks/useApi';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
 import ModelSelector from '../ui/ModelSelector';
@@ -27,19 +28,14 @@ export default function RestoreView() {
   const setProgressMessage = useViewStore((s) => s.setProgressMessage);
   const photos = usePhotoStore((s) => s.photos);
 
-  // Get currentAnalysis from store (set by AnalyzeView)
-  const currentAnalysis = usePhotoStore(
-    (state) => state.currentAnalysis as AnalysisResult | undefined,
-  );
-
   const restoreMutation = useRestoreImage();
   const [isRestoring, setIsRestoring] = useState(false);
 
   const currentPhoto = photos[0];
 
   const handleRestore = async () => {
-    if (!currentPhoto || !currentAnalysis) {
-      toast.error('Brak zdjęcia lub analizy');
+    if (!currentPhoto) {
+      toast.error('Brak zdjęcia');
       return;
     }
 
@@ -50,7 +46,6 @@ export default function RestoreView() {
     try {
       const result = await restoreMutation.mutateAsync({
         file: currentPhoto.file,
-        analysis: currentAnalysis,
       });
 
       // Store result and navigate to results view
@@ -120,37 +115,13 @@ export default function RestoreView() {
               <div className="flex-1 space-y-4">
                 <h3 className="font-semibold text-lg">{currentPhoto.name}</h3>
 
-                {currentAnalysis && (
-                  <div className="space-y-2 text-sm text-matrix-text-dim">
-                    <p>Poziom uszkodzeń: {Math.round(currentAnalysis.damage_score)}%</p>
-                    <p>Wykryte problemy: {currentAnalysis.damage_types.length}</p>
-                    <p>Provider: {currentAnalysis.provider_used}</p>
-                  </div>
-                )}
-
                 <div className="p-4 rounded-lg bg-matrix-accent/10 border border-matrix-accent/30">
                   <p className="text-sm">
-                    AI automatycznie zastosuje najlepsze techniki restauracji na podstawie
-                    przeprowadzonej analizy.
+                    AI automatycznie wykryje uszkodzenia i zastosuje najlepsze techniki restauracji.
                   </p>
                 </div>
               </div>
             </div>
-
-            {/* Recommendations */}
-            {currentAnalysis && currentAnalysis.recommendations.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-3">Zalecane działania:</h4>
-                <ul className="space-y-2">
-                  {currentAnalysis.recommendations.map((rec) => (
-                    <li key={rec} className="flex items-start gap-2 text-sm text-matrix-text-dim">
-                      <span className="text-matrix-accent">✓</span>
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -158,14 +129,13 @@ export default function RestoreView() {
       {/* Actions */}
       {!isRestoring && (
         <div className="mt-6 flex justify-between">
-          <button type="button" onClick={() => setCurrentView('analyze')} className="btn-secondary">
-            ← Wróć do analizy
+          <button type="button" onClick={() => setCurrentView('crop')} className="btn-secondary">
+            ← Wróć do kadrowania
           </button>
 
           <button
             type="button"
             onClick={handleRestore}
-            disabled={!currentAnalysis}
             className="btn-glow flex items-center gap-2"
           >
             <Play size={18} />

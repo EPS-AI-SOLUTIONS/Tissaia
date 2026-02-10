@@ -100,25 +100,6 @@ function createMockPhoto() {
   };
 }
 
-// Create mock analysis
-function createMockAnalysis() {
-  return {
-    id: 'analysis-1',
-    timestamp: new Date().toISOString(),
-    damage_score: 45,
-    damage_types: [
-      {
-        name: 'scratches',
-        severity: 'medium' as const,
-        description: 'Minor scratches',
-        area_percentage: 15,
-      },
-    ],
-    recommendations: ['Remove scratches', 'Enhance colors'],
-    provider_used: 'google',
-  };
-}
-
 describe('RestoreView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -184,83 +165,41 @@ describe('RestoreView', () => {
       expect(img).toBeInTheDocument();
     });
 
-    it('displays back to analyze button', () => {
+    it('displays back to crop button', () => {
       renderWithProviders(<RestoreView />);
-      expect(screen.getByText(/wróć do analizy/i)).toBeInTheDocument();
+      expect(screen.getByText(/wróć do kadrowania/i)).toBeInTheDocument();
     });
 
-    it('navigates to analyze when back button clicked', () => {
+    it('navigates to crop when back button clicked', () => {
       renderWithProviders(<RestoreView />);
 
-      const backButton = screen.getByText(/wróć do analizy/i);
+      const backButton = screen.getByText(/wróć do kadrowania/i);
       fireEvent.click(backButton);
 
-      expect(useViewStore.getState().currentView).toBe('analyze');
+      expect(useViewStore.getState().currentView).toBe('crop');
     });
   });
 
   // ============================================
-  // WITH ANALYSIS
+  // RESTORATION BUTTON
   // ============================================
 
-  describe('with analysis', () => {
+  describe('restoration button', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
-    it('displays damage score', () => {
-      renderWithProviders(<RestoreView />);
-      expect(screen.getByText(/45%/)).toBeInTheDocument();
-    });
-
-    it('displays number of detected problems', () => {
-      renderWithProviders(<RestoreView />);
-      expect(screen.getByText(/wykryte problemy.*1/i)).toBeInTheDocument();
-    });
-
-    it('displays provider used', () => {
-      renderWithProviders(<RestoreView />);
-      expect(screen.getByText(/provider.*google/i)).toBeInTheDocument();
-    });
-
-    it('displays recommendations', () => {
-      renderWithProviders(<RestoreView />);
-      expect(screen.getByText(/zalecane działania/i)).toBeInTheDocument();
-      expect(screen.getByText('Remove scratches')).toBeInTheDocument();
-      expect(screen.getByText('Enhance colors')).toBeInTheDocument();
-    });
-
-    it('displays start restoration button', () => {
+    it('displays start restoration button when photo exists', () => {
       renderWithProviders(<RestoreView />);
       expect(screen.getByRole('button', { name: /rozpocznij restaurację/i })).toBeInTheDocument();
     });
 
-    it('start restoration button is enabled with analysis', () => {
+    it('start restoration button is enabled', () => {
       renderWithProviders(<RestoreView />);
       const restoreButton = screen.getByRole('button', { name: /rozpocznij restaurację/i });
       expect(restoreButton).not.toBeDisabled();
-    });
-  });
-
-  // ============================================
-  // WITHOUT ANALYSIS
-  // ============================================
-
-  describe('without analysis', () => {
-    beforeEach(() => {
-      act(() => {
-        usePhotoStore.getState().addPhoto(createMockPhoto());
-      });
-    });
-
-    it('start restoration button exists without analysis', () => {
-      renderWithProviders(<RestoreView />);
-      const restoreButton = screen.getByRole('button', { name: /rozpocznij restaurację/i });
-      // Button exists but may or may not be disabled depending on implementation
-      expect(restoreButton).toBeInTheDocument();
     });
   });
 
@@ -272,7 +211,6 @@ describe('RestoreView', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 
@@ -303,7 +241,6 @@ describe('RestoreView', () => {
     beforeEach(() => {
       act(() => {
         usePhotoStore.getState().addPhoto(createMockPhoto());
-        usePhotoStore.setState({ currentAnalysis: createMockAnalysis() });
       });
     });
 

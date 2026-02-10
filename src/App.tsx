@@ -23,7 +23,6 @@ import { useViewStore } from './store/useViewStore';
 // Lazy-loaded views
 const UploadView = lazy(() => import('./components/photo/UploadView'));
 const CropView = lazy(() => import('./components/photo/CropView'));
-const AnalyzeView = lazy(() => import('./components/photo/AnalyzeView'));
 const RestoreView = lazy(() => import('./components/photo/RestoreView'));
 const ResultsView = lazy(() => import('./components/photo/ResultsView'));
 const HistoryView = lazy(() => import('./components/HistoryView'));
@@ -78,8 +77,6 @@ export default function App() {
         return <UploadView />;
       case 'crop':
         return <CropView />;
-      case 'analyze':
-        return <AnalyzeView />;
       case 'restore':
         return <RestoreView />;
       case 'results':

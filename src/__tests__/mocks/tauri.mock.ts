@@ -42,23 +42,6 @@ export const mockProvidersResponse = [
   },
 ];
 
-export const mockAnalysisResult = {
-  id: 'analysis-123',
-  timestamp: new Date().toISOString(),
-  damage_score: 45,
-  damage_types: [
-    {
-      name: 'scratches',
-      severity: 'medium',
-      description: 'Minor scratches visible',
-      area_percentage: 15,
-    },
-    { name: 'fading', severity: 'low', description: 'Slight color fading', area_percentage: 25 },
-  ],
-  recommendations: ['Remove scratches', 'Restore colors', 'Enhance contrast'],
-  provider_used: 'google',
-};
-
 export const mockRestorationResult = {
   id: 'restoration-456',
   timestamp: new Date().toISOString(),
@@ -73,7 +56,7 @@ export const mockHistoryEntries = [
   {
     id: 'history-1',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
-    operation: 'analysis',
+    operation: 'restoration',
     input_preview: 'photo1.jpg',
     result_preview: null,
     provider: 'google',
@@ -116,8 +99,6 @@ export function setupMockInvoke() {
         return Promise.resolve(mockHealthResponse);
       case 'get_providers_status':
         return Promise.resolve(mockProvidersResponse);
-      case 'analyze_image':
-        return Promise.resolve(mockAnalysisResult);
       case 'restore_image':
         return Promise.resolve(mockRestorationResult);
       case 'get_history':

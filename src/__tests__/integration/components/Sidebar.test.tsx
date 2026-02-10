@@ -130,11 +130,11 @@ describe('Sidebar', () => {
       expect(useViewStore.getState().currentView).toBe('upload');
     });
 
-    it('navigates to analyze view when clicked', () => {
+    it('navigates to restore view when clicked', () => {
       renderWithProviders(<Sidebar />, { locale: 'en' });
-      const analyzeButton = screen.getByRole('button', { name: /Analy/i });
-      fireEvent.click(analyzeButton);
-      expect(useViewStore.getState().currentView).toBe('analyze');
+      const restoreButton = screen.getByRole('button', { name: /Restor/i });
+      fireEvent.click(restoreButton);
+      expect(useViewStore.getState().currentView).toBe('restore');
     });
 
     it('navigates to settings view when clicked', () => {

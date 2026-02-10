@@ -38,7 +38,6 @@ pub fn run() {
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::health_check,
-            commands::analyze_image,
             commands::get_ollama_models,
             commands::restore_image,
             commands::get_history,

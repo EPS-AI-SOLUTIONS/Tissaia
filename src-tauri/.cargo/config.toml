@@ -1,0 +1,10 @@
+# Cargo build optimization for faster compilation
+[build]
+# Uses all CPU cores by default (no need to set jobs)
+
+[target.x86_64-pc-windows-msvc]
+# Use faster Microsoft linker (lld-link)
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[registries.crates-io]
+protocol = "sparse"

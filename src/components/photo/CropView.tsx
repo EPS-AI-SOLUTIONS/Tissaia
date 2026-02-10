@@ -9,13 +9,8 @@
 import { ArrowRight, Loader2, Scan, Scissors, SkipForward, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  createMockRestorationResult,
-  MOCK_ANALYSIS_DELAY,
-  MOCK_RESTORATION_DELAY,
-  mockAnalysisResult,
-} from '../../hooks/api/mocks';
-import type { AnalysisResult, BoundingBox, RestorationResult } from '../../hooks/api/types';
+import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from '../../hooks/api/mocks';
+import type { BoundingBox, RestorationResult } from '../../hooks/api/types';
 import { useCropPhotos, useDetectPhotos } from '../../hooks/api/useCrop';
 import { delay, safeInvoke } from '../../hooks/api/utils';
 import { usePhotoStore } from '../../store/usePhotoStore';
@@ -178,7 +173,7 @@ export default function CropView() {
     };
   }, []);
 
-  // Run full pipeline: crop → analyze → restore per photo
+  // Run full pipeline: crop → restore per photo
   const runFullPipeline = useCallback(async () => {
     if (!currentPhoto || boxes.length === 0) return;
 
@@ -205,32 +200,12 @@ export default function CropView() {
       setCroppedPhotos(cropResult.photos);
       console.log('[CropView] Cropped:', cropResult.photos.length, 'photos');
 
-      // Step 2: For each cropped photo, run analysis + restoration
+      // Step 2: For each cropped photo, run restoration
       for (let i = 0; i < cropResult.photos.length; i++) {
         if (pipelineCancelledRef.current) return;
 
         const croppedPhoto = cropResult.photos[i];
         setPipelineCurrent(i + 1);
-
-        // Analyze
-        if (pipelineCancelledRef.current) return;
-        setPipelineStage(`Analiza zdjęcia ${i + 1}/${cropResult.photos.length}...`);
-        setProgressMessage(`Analiza zdjęcia ${i + 1}/${cropResult.photos.length}`);
-
-        let analysisResult: AnalysisResult;
-        if (!isTauri()) {
-          await delay(MOCK_ANALYSIS_DELAY);
-          analysisResult = {
-            ...mockAnalysisResult,
-            id: `mock-analysis-${i}-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-          };
-        } else {
-          analysisResult = await safeInvoke<AnalysisResult>('analyze_image', {
-            imageBase64: croppedPhoto.image_base64,
-            mimeType: croppedPhoto.mime_type,
-          });
-        }
 
         // Restore
         if (pipelineCancelledRef.current) return;
@@ -245,12 +220,11 @@ export default function CropView() {
           restorationResult = await safeInvoke<RestorationResult>('restore_image', {
             imageBase64: croppedPhoto.image_base64,
             mimeType: croppedPhoto.mime_type,
-            analysis: analysisResult,
           });
         }
 
         if (pipelineCancelledRef.current) return;
-        setPipelineResult(croppedPhoto.id, analysisResult, restorationResult);
+        setPipelineResult(croppedPhoto.id, restorationResult);
         toast.success(`Zdjęcie ${i + 1} przetworzone`);
       }
 

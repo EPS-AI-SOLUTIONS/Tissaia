@@ -66,10 +66,10 @@ describe('Header', () => {
 
     it('displays current view in breadcrumb', () => {
       act(() => {
-        useViewStore.getState().setCurrentView('analyze');
+        useViewStore.getState().setCurrentView('restore');
       });
       renderWithProviders(<Header />, { locale: 'en' });
-      expect(screen.getByText('Analyze')).toBeInTheDocument();
+      expect(screen.getByText('Restore')).toBeInTheDocument();
     });
   });
 
@@ -203,7 +203,7 @@ describe('Header', () => {
   describe('view labels localization', () => {
     const views = [
       'upload',
-      'analyze',
+      'crop',
       'restore',
       'results',
       'history',

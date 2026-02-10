@@ -12,14 +12,11 @@ export { queryKeys } from './queryKeys';
 // Types
 export type {
   AiModel,
-  AnalysisResult,
   AppSettings,
   AvailableModel,
   BoundingBox,
   CroppedPhoto,
   CropResult,
-  DamageSeverity,
-  DamageType,
   DetectionResult,
   HealthResponse,
   HistoryEntry,
@@ -27,12 +24,7 @@ export type {
   OperationType,
   ProviderStatus,
   RestorationResult,
-  WorkflowProgress,
-  WorkflowResult,
 } from './types';
-export type { AnalyzeImageParams } from './useAnalysis';
-// Analysis Hooks
-export { useAnalyzeImage } from './useAnalysis';
 export type { CropPhotosParams, DetectPhotosParams } from './useCrop';
 // Crop Hooks
 export { useCropPhotos, useDetectPhotos } from './useCrop';
@@ -49,9 +41,9 @@ export {
   useSelectedModel,
   useSetSelectedModel,
 } from './useModels';
-export type { RestoreImageParams, WorkflowProgressCallback } from './useRestoration';
+export type { RestoreImageParams } from './useRestoration';
 // Restoration Hooks
-export { useRestorationWorkflow, useRestoreImage } from './useRestoration';
+export { useRestoreImage } from './useRestoration';
 export type { SetApiKeyParams } from './useSettings';
 // Settings Hooks
 export { useSaveSettings, useSetApiKey, useSettings } from './useSettings';
