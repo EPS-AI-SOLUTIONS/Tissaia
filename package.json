@@ -10,19 +10,19 @@
     "dev": "vite --host",
     "kill-port": "node scripts/kill-port.cjs 5175",
     "predev": "pnpm kill-port",
-    "build": "tsc -b && vite build",
-    "lint": "biome check .",
+    "build": "tsc -b; vite build",
+    "lint": "npx @biomejs/biome check .",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "format": "biome format --write .",
+    "format": "npx @biomejs/biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run src/__tests__/unit",
     "test:integration": "vitest run src/__tests__/integration",
-    "test:all": "pnpm type-check && pnpm test",
-    "test:ci": "vitest run --coverage && playwright test",
+    "test:all": "pnpm type-check; pnpm test",
+    "test:ci": "vitest run --coverage; playwright test",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
@@ -34,7 +34,7 @@
     "chromatic": "chromatic",
     "chromatic:ci": "chromatic --exit-once-uploaded",
     "prepare": "husky",
-    "lint:fix": "biome check --write ."
+    "lint:fix": "npx @biomejs/biome check --write ."
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
@@ -116,6 +116,6 @@
     "pnpm": ">=9.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,json}": "biome check --write"
+    "*.{ts,tsx,json}": "npx @biomejs/biome check --write"
   }
 }
