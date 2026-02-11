@@ -43,9 +43,9 @@ function ProviderCard({ provider, index, theme }: ProviderCardProps) {
   const statusConfig = {
     healthy: {
       icon: CheckCircle,
-      color: theme.isLight ? 'text-emerald-600' : 'text-green-400',
-      bg: theme.isLight ? 'bg-emerald-500/10' : 'bg-green-500/10',
-      border: theme.isLight ? 'border-emerald-500/30' : 'border-green-500/30',
+      color: theme.isLight ? 'text-emerald-600' : 'text-white',
+      bg: theme.isLight ? 'bg-emerald-500/10' : 'bg-white/10',
+      border: theme.isLight ? 'border-emerald-500/30' : 'border-white/20',
       label: t('health.healthy'),
     },
     disabled: {
@@ -165,7 +165,7 @@ export default function HealthView() {
               overallStatus === 'healthy'
                 ? theme.isLight
                   ? 'border-emerald-500/30'
-                  : 'border-green-500/30'
+                  : 'border-white/20'
                 : overallStatus === 'degraded'
                   ? 'border-yellow-500/30'
                   : 'border-red-500/30'
@@ -178,7 +178,7 @@ export default function HealthView() {
                     overallStatus === 'healthy'
                       ? theme.isLight
                         ? 'bg-emerald-500/20'
-                        : 'bg-green-500/20'
+                        : 'bg-white/15'
                       : overallStatus === 'degraded'
                         ? 'bg-yellow-500/20'
                         : 'bg-red-500/20'
@@ -190,7 +190,7 @@ export default function HealthView() {
                       overallStatus === 'healthy'
                         ? theme.isLight
                           ? 'text-emerald-600'
-                          : 'text-green-400'
+                          : 'text-white'
                         : overallStatus === 'degraded'
                           ? 'text-yellow-500'
                           : 'text-red-500'

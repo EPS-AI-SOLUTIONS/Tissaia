@@ -44,9 +44,9 @@ describe('tauri utils', () => {
       enableTauriMode();
       expect(isTauri()).toBe(true);
 
-      // Clean up
+      // Once cached as true, result stays true (WebView2 bridge is persistent)
       disableTauriMode();
-      expect(isTauri()).toBe(false);
+      expect(isTauri()).toBe(true);
     });
   });
 });

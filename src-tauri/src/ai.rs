@@ -8,6 +8,10 @@ use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
 
+/// Gemini Pro wymaga temperature=1.0 dla generowania obrazów i stabilnych wyników.
+/// NIE ZMIENIAJ — wartość wymagana przez API Gemini dla response_modalities z IMAGE.
+const GEMINI_TEMPERATURE: f64 = 1.0;
+
 pub struct AiProvider {
     client: Client,
 }
@@ -16,7 +20,7 @@ impl AiProvider {
     pub fn new() -> Self {
         Self {
             client: Client::builder()
-                .timeout(Duration::from_secs(30))
+                .timeout(Duration::from_secs(120))
                 .connect_timeout(Duration::from_secs(5))
                 .build()
                 .unwrap_or_default(),
@@ -46,13 +50,14 @@ Automatically detect ALL damage and deterioration in this photo, then restore it
 RESTORATION INSTRUCTIONS (apply ALL):
 1. GEOMETRY: The photo must be straightened. GENERATIVELY INPAINT any missing corners or edges using inner context (walls, floor, background). Fill in any torn or missing areas seamlessly.
 2. FLASH REMOVAL: Aggressively neutralize flash glare hotspots on faces and reflective surfaces. Recover detail under blown-out highlights.
-3. CLEANUP: Remove ALL grain, noise, dust specks, scratches, stains, watermarks, and scanning artifacts. The result must be perfectly clean.
+3. ADVANCED DENOISING: Apply MAXIMUM-STRENGTH noise reduction. Remove ALL grain, film grain, digital noise, ISO noise, chroma noise, luminance noise, dust specks, scratches, stains, watermarks, and scanning artifacts. Apply multi-pass denoising — the result must be PERFECTLY CLEAN and SMOOTH with ZERO visible noise or grain. Preserve edges and fine detail while eliminating all noise patterns.
 4. FACES: Lock facial features strictly — do NOT alter face shape, expression, or identity. Apply natural skin tone restoration (not plastic/airbrushed). Enhance eye detail and sharpness.
 5. COLOR: Apply professional HDR colorization. If the photo is black & white, colorize it naturally. If color, restore faded colors to vibrant, accurate tones. Use warm, natural color grading.
 6. STUDIO QUALITY: Apply professional studio photo finish — soft diffused lighting simulation, subtle vignette, professional color grading. The final result should look like it was taken in a modern photography studio.
-7. OUTPUT: Return the FULL restored image with NO borders, NO watermarks, NO text overlays. Same aspect ratio as input.
+7. RESOLUTION & SHARPNESS: UPSCALE the image to the HIGHEST possible resolution. Enhance fine details, texture, and micro-contrast. Apply intelligent super-resolution to recover lost detail. The output image must be SHARP, HIGH-RESOLUTION, and CRISP with maximum detail preservation.
+8. OUTPUT: Return the FULL restored image at MAXIMUM RESOLUTION with NO borders, NO watermarks, NO text overlays. Same aspect ratio as input. Output the LARGEST, HIGHEST-QUALITY image possible.
 
-CRITICAL: Generate and return the actual restored image, not text. The output must be the restored photograph."#;
+CRITICAL: Generate and return the actual restored image, not text. The output must be the restored photograph at the highest possible quality and resolution."#;
 
         let body = json!({
             "contents": [{
@@ -67,8 +72,8 @@ CRITICAL: Generate and return the actual restored image, not text. The output mu
                 ]
             }],
             "generationConfig": {
-                "temperature": 1.0,
-                "maxOutputTokens": 8192,
+                "temperature": GEMINI_TEMPERATURE,
+                "maxOutputTokens": 16384,
                 "response_modalities": ["TEXT", "IMAGE"]
             }
         });
@@ -137,9 +142,10 @@ CRITICAL: Generate and return the actual restored image, not text. The output mu
             result.improvements = vec![
                 "Geometry corrected".to_string(),
                 "Flash removal applied".to_string(),
-                "Noise and grain removed".to_string(),
+                "Advanced denoising (multi-pass)".to_string(),
                 "Color restoration (HDR)".to_string(),
                 "Face enhancement".to_string(),
+                "Super-resolution upscale".to_string(),
                 "Studio-quality finish".to_string(),
             ];
         }
@@ -169,10 +175,11 @@ CRITICAL: Generate and return the actual restored image, not text. The output mu
 Restoration priorities:
 1. GEOMETRY: Straighten, inpaint missing corners using inner context
 2. FLASH REMOVAL: Neutralize flash glare hotspots on faces
-3. CLEANUP: Remove grain, noise, dust, scratches, stains
+3. ADVANCED DENOISING: Maximum-strength multi-pass noise reduction — remove ALL grain, film grain, ISO noise, chroma noise, dust, scratches, stains. Result must be perfectly clean.
 4. FACES: Lock facial features, natural skin tone (not plastic)
 5. COLOR: HDR colorization, restore faded colors to vibrant tones
-6. STUDIO QUALITY: Professional studio photo finish
+6. RESOLUTION: Super-resolution upscale for maximum sharpness and detail
+7. STUDIO QUALITY: Professional studio photo finish
 
 Return ONLY valid JSON."#;
 
@@ -257,10 +264,11 @@ Return ONLY valid JSON."#;
 Restoration priorities:
 1. GEOMETRY: Straighten, inpaint missing corners
 2. FLASH REMOVAL: Neutralize glare hotspots
-3. CLEANUP: Remove grain, noise, dust, scratches
+3. ADVANCED DENOISING: Maximum-strength multi-pass noise removal — eliminate ALL grain, film grain, ISO noise, chroma noise, dust, scratches. Perfectly clean result.
 4. FACES: Lock features, natural skin tone
 5. COLOR: HDR colorization, vibrant tones
-6. STUDIO QUALITY: Professional finish
+6. RESOLUTION: Super-resolution upscale for maximum detail and sharpness
+7. STUDIO QUALITY: Professional finish
 
 Return ONLY valid JSON."#;
 
@@ -361,7 +369,7 @@ Return ONLY valid JSON."#;
     "estimated_quality_improvement": 0-100
 }
 
-Priorities: geometry fix, flash removal, cleanup (grain/noise/dust/scratches), face enhancement (natural skin), HDR colorization, studio-quality finish.
+Priorities: geometry fix, flash removal, MAXIMUM denoising (remove ALL grain/noise/dust/scratches — multi-pass, perfectly clean result), face enhancement (natural skin), HDR colorization, super-resolution upscale, studio-quality finish.
 Return ONLY valid JSON."#;
 
         let body = json!({
@@ -422,15 +430,28 @@ Use normalized coordinates 0-1000 where top-left corner = (0, 0) and bottom-righ
 Crop tightly to each photo's actual edges, excluding the scanner background/border.
 Order detected photos: left-to-right, then top-to-bottom.
 
+IMPORTANT - ROTATION DETECTION:
+Carefully analyze the orientation of each photo by looking at:
+- People/faces: heads should be at the top, feet at the bottom
+- Text/writing: should read left-to-right, top-to-bottom
+- Buildings/trees: should be upright with sky at the top
+- Tables/furniture: should sit on the ground, not float
+Report "rotation_angle" as the CURRENT clockwise rotation of the photo FROM its upright position:
+- 0 = already upright (no correction needed)
+- 90 = photo is currently rotated 90° clockwise from upright (heads point to the right)
+- 180 = photo is upside down (heads point downward)
+- 270 = photo is currently rotated 270° clockwise from upright (heads point to the left)
+Only use values 0, 90, 180, or 270. Do NOT report small tilt angles.
+
 If only ONE photo fills the entire scan, return a single bounding box covering it.
 
 Return ONLY valid JSON in this exact format:
 {
     "photo_count": 3,
     "bounding_boxes": [
-        {"x": 50, "y": 30, "width": 400, "height": 450, "confidence": 0.95, "label": "photo 1"},
-        {"x": 520, "y": 30, "width": 430, "height": 450, "confidence": 0.92, "label": "photo 2"},
-        {"x": 50, "y": 520, "width": 400, "height": 440, "confidence": 0.90, "label": "photo 3"}
+        {"x": 50, "y": 30, "width": 400, "height": 450, "confidence": 0.95, "label": "photo 1", "rotation_angle": 0},
+        {"x": 520, "y": 30, "width": 430, "height": 450, "confidence": 0.92, "label": "photo 2", "rotation_angle": 90},
+        {"x": 50, "y": 520, "width": 400, "height": 440, "confidence": 0.90, "label": "photo 3", "rotation_angle": 0}
     ]
 }"#;
 
@@ -447,7 +468,7 @@ Return ONLY valid JSON in this exact format:
                 ]
             }],
             "generationConfig": {
-                "temperature": 1.0,
+                "temperature": 0.2,
                 "maxOutputTokens": 4096,
                 "responseMimeType": "application/json"
             }
@@ -792,19 +813,30 @@ Return ONLY valid JSON:
         let parsed: serde_json::Value = serde_json::from_str(clean_text)
             .map_err(|e| anyhow!("JSON parse error: {}", e))?;
 
-        let photo_count = parsed["photo_count"].as_u64().unwrap_or(0) as usize;
+        let photo_count = parsed["photo_count"]
+            .as_u64()
+            .or_else(|| parsed["photo_count"].as_f64().map(|f| f as u64))
+            .unwrap_or(0) as usize;
 
         let bounding_boxes = if let Some(boxes) = parsed["bounding_boxes"].as_array() {
             boxes
                 .iter()
                 .filter_map(|b| {
+                    // Gemini may return coordinates as floats (e.g. 50.0 instead of 50).
+                    // as_u64() returns None for floats, so try as_f64() as fallback.
+                    let x = b["x"].as_u64().or_else(|| b["x"].as_f64().map(|f| f as u64))?;
+                    let y = b["y"].as_u64().or_else(|| b["y"].as_f64().map(|f| f as u64))?;
+                    let w = b["width"].as_u64().or_else(|| b["width"].as_f64().map(|f| f as u64))?;
+                    let h = b["height"].as_u64().or_else(|| b["height"].as_f64().map(|f| f as u64))?;
+
                     Some(BoundingBox {
-                        x: b["x"].as_u64()? as u32,
-                        y: b["y"].as_u64()? as u32,
-                        width: b["width"].as_u64()? as u32,
-                        height: b["height"].as_u64()? as u32,
+                        x: x as u32,
+                        y: y as u32,
+                        width: w as u32,
+                        height: h as u32,
                         confidence: b["confidence"].as_f64().unwrap_or(0.9) as f32,
                         label: b["label"].as_str().map(|s| s.to_string()),
+                        rotation_angle: b["rotation_angle"].as_f64().unwrap_or(0.0) as f32,
                     })
                 })
                 .collect()

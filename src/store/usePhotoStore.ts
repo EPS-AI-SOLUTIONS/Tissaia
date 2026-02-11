@@ -3,9 +3,18 @@
  * Photo & Pipeline Store
  * ======================
  * Photo management, temporary restoration results, and pipeline state.
+ *
+ * NOTE (Memory pressure): Pipeline stores base64 image strings directly in state.
+ * For a scan with N photos, memory usage ≈ N × (crop + restored + original) ≈ N × 15 MB.
+ * Consider migrating to Blob/ObjectURL or disk-backed storage (via Tauri fs) for large batches.
  */
 import { create } from 'zustand';
-import type { VerificationResult } from '../hooks/api/types';
+import type {
+  CroppedPhoto,
+  DetectionResult,
+  RestorationResult,
+  VerificationResult,
+} from '../hooks/api/types';
 import type { PhotoFile } from '../types';
 
 // ============================================
@@ -18,14 +27,14 @@ interface PhotoState {
   removePhoto: (id: string) => void;
   clearPhotos: () => void;
 
-  restorationResult: unknown | null;
+  restorationResult: RestorationResult | null;
 
-  detectionResult: unknown | null;
-  setDetectionResult: (result: unknown | null) => void;
-  croppedPhotos: unknown[];
-  setCroppedPhotos: (photos: unknown[]) => void;
-  pipelineResults: Record<string, { restoration: unknown }>;
-  setPipelineResult: (photoId: string, restoration: unknown) => void;
+  detectionResult: DetectionResult | null;
+  setDetectionResult: (result: DetectionResult | null) => void;
+  croppedPhotos: CroppedPhoto[];
+  setCroppedPhotos: (photos: CroppedPhoto[]) => void;
+  pipelineResults: Record<string, { restoration: RestorationResult }>;
+  setPipelineResult: (photoId: string, restoration: RestorationResult) => void;
   clearPipelineResults: () => void;
 
   // Verification results (fire-and-forget)

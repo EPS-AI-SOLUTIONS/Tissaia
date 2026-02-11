@@ -103,6 +103,8 @@ export interface BoundingBox {
   height: number;
   confidence: number;
   label: string | null;
+  /** Rotation angle in degrees (clockwise) needed to make photo upright. 0 = already upright. */
+  rotation_angle: number;
 }
 
 export interface DetectionResult {

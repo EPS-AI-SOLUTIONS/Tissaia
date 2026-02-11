@@ -12,6 +12,65 @@ use tokio::sync::Mutex;
 
 type AppStateHandle = Arc<Mutex<AppState>>;
 
+/// Read EXIF orientation and apply rotation correction to base64 image.
+/// Returns corrected base64 image (or original if no EXIF rotation needed).
+#[cfg(feature = "image-processing")]
+fn apply_exif_rotation(image_base64: &str, mime_type: &str) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    let image_bytes = STANDARD.decode(image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    // Try to read EXIF orientation
+    let orientation = {
+        let mut cursor = std::io::Cursor::new(&image_bytes);
+        match exif::Reader::new().read_from_container(&mut cursor) {
+            Ok(exif_data) => {
+                exif_data.get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+                    .and_then(|f| f.value.get_uint(0))
+                    .unwrap_or(1) // Default: normal orientation
+            }
+            Err(_) => 1, // No EXIF data, assume normal
+        }
+    };
+
+    // EXIF Orientation values:
+    // 1 = Normal, 2 = Flipped horizontal, 3 = Rotated 180°
+    // 4 = Flipped vertical, 5 = Transposed, 6 = Rotated 90° CW
+    // 7 = Transverse, 8 = Rotated 270° CW (90° CCW)
+    if orientation == 1 {
+        return Ok(image_base64.to_string()); // No rotation needed
+    }
+
+    info!("EXIF orientation detected: {} — applying correction", orientation);
+
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Image decode error: {}", e))?;
+
+    let corrected = match orientation {
+        3 => img.rotate180(),
+        6 => img.rotate90(),
+        8 => img.rotate270(),
+        // For flip cases (2,4,5,7) we just do the closest rotation
+        2 => img.fliph(),
+        4 => img.flipv(),
+        5 => img.rotate90().fliph(),
+        7 => img.rotate270().fliph(),
+        _ => img,
+    };
+
+    let mut buf = std::io::Cursor::new(Vec::new());
+    let output_format = match mime_type {
+        "image/png" => image::ImageFormat::Png,
+        "image/webp" => image::ImageFormat::WebP,
+        _ => image::ImageFormat::Jpeg,
+    };
+    corrected.write_to(&mut buf, output_format)
+        .map_err(|e| format!("Image encode error: {}", e))?;
+
+    Ok(STANDARD.encode(buf.into_inner()))
+}
+
 #[tauri::command]
 pub async fn health_check(state: State<'_, AppStateHandle>) -> Result<HealthResponse, String> {
     let state = state.lock().await;
@@ -40,6 +99,10 @@ pub async fn restore_image(
     image_base64: String,
     mime_type: String,
 ) -> Result<RestorationResult, String> {
+    // Apply EXIF orientation correction before sending to AI
+    #[cfg(feature = "image-processing")]
+    let image_base64 = apply_exif_rotation(&image_base64, &mime_type).unwrap_or(image_base64);
+
     let provider_name;
     let api_key;
     let client;
@@ -163,6 +226,7 @@ pub async fn detect_photos(
     let provider_name;
     let api_key;
     let client;
+    let google_key_fallback;
 
     {
         let state_guard = state.lock().await;
@@ -175,6 +239,8 @@ pub async fn detect_photos(
             .ok_or("API key not found")?
             .clone();
         client = state_guard.client().clone();
+        // Pre-fetch google key for fallback to avoid second lock acquisition
+        google_key_fallback = state_guard.get_api_key("google").cloned();
     }
 
     let ai = AiProvider::with_client(client);
@@ -183,12 +249,8 @@ pub async fn detect_photos(
     let result = match provider_name.as_str() {
         "google" => ai.detect_photo_boundaries(&api_key, &image_base64, &mime_type).await,
         _ => {
-            // Fallback: try google if available
-            let google_key = {
-                let state_guard = state.lock().await;
-                state_guard.get_api_key("google").cloned()
-            };
-            if let Some(key) = google_key {
+            // Fallback: try google if available (key pre-fetched above)
+            if let Some(key) = google_key_fallback {
                 ai.detect_photo_boundaries(&key, &image_base64, &mime_type).await
             } else {
                 Err(anyhow::anyhow!("Photo detection requires Google Gemini Vision"))
@@ -251,7 +313,27 @@ pub async fn crop_photos(
         }
 
         let cropped = img.crop_imm(px as u32, py as u32, pw as u32, ph as u32);
-        let (cw, ch) = cropped.dimensions();
+
+        // Apply rotation CORRECTION based on detected angle.
+        // rotation_angle = current CW rotation from upright, so correction = (360 - angle).
+        // 90° detected (heads right) → correct with rotate270 (=90° CCW)
+        // 180° detected (upside down) → correct with rotate180
+        // 270° detected (heads left) → correct with rotate90 (=90° CW)
+        let rotation = bbox.rotation_angle;
+        let rotated = if (rotation - 90.0).abs() < 45.0 {
+            info!("Photo {} detected at 90° CW → correcting with 270° CW (90° CCW)", idx);
+            cropped.rotate270()
+        } else if (rotation - 180.0).abs() < 45.0 {
+            info!("Photo {} detected at 180° → correcting with 180°", idx);
+            cropped.rotate180()
+        } else if (rotation - 270.0).abs() < 45.0 {
+            info!("Photo {} detected at 270° CW → correcting with 90° CW", idx);
+            cropped.rotate90()
+        } else {
+            cropped
+        };
+
+        let (cw, ch) = rotated.dimensions();
 
         // Encode back to base64
         let mut buf = std::io::Cursor::new(Vec::new());
@@ -260,7 +342,7 @@ pub async fn crop_photos(
             "image/webp" => image::ImageFormat::WebP,
             _ => image::ImageFormat::Jpeg,
         };
-        cropped.write_to(&mut buf, output_format)
+        rotated.write_to(&mut buf, output_format)
             .map_err(|e| format!("Image encode error: {}", e))?;
 
         let cropped_base64 = STANDARD.encode(buf.into_inner());
@@ -299,6 +381,452 @@ pub async fn crop_photos(
     _original_filename: String,
 ) -> Result<CropResult, String> {
     Err("Image processing feature is not enabled. Rebuild with --features image-processing".to_string())
+}
+
+// ============================================
+// MANUAL IMAGE ROTATION
+// ============================================
+
+#[cfg(feature = "image-processing")]
+#[tauri::command]
+pub async fn rotate_image(
+    image_base64: String,
+    mime_type: String,
+    degrees: i32,
+) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    info!("=== ROTATE_IMAGE {} degrees ===", degrees);
+
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Image decode error: {}", e))?;
+
+    // Normalize degrees to 0, 90, 180, 270
+    let normalized = ((degrees % 360) + 360) % 360;
+    let rotated = match normalized {
+        90 => img.rotate90(),
+        180 => img.rotate180(),
+        270 => img.rotate270(),
+        _ => img,
+    };
+
+    let mut buf = std::io::Cursor::new(Vec::new());
+    let output_format = match mime_type.as_str() {
+        "image/png" => image::ImageFormat::Png,
+        "image/webp" => image::ImageFormat::WebP,
+        _ => image::ImageFormat::Jpeg,
+    };
+    rotated.write_to(&mut buf, output_format)
+        .map_err(|e| format!("Image encode error: {}", e))?;
+
+    let result_base64 = STANDARD.encode(buf.into_inner());
+    info!("=== ROTATE_IMAGE END ===");
+    Ok(result_base64)
+}
+
+#[cfg(not(feature = "image-processing"))]
+#[tauri::command]
+pub async fn rotate_image(
+    _image_base64: String,
+    _mime_type: String,
+    _degrees: i32,
+) -> Result<String, String> {
+    Err("Image processing feature is not enabled".to_string())
+}
+
+// ============================================
+// UPSCALE IMAGE 2x (Resolution Enhancement)
+// ============================================
+
+#[cfg(feature = "image-processing")]
+#[tauri::command]
+pub async fn upscale_image(
+    image_base64: String,
+    mime_type: String,
+    scale_factor: Option<f64>,
+) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use image::GenericImageView;
+
+    let factor = scale_factor.unwrap_or(2.0);
+    info!("=== UPSCALE_IMAGE START === scale: {}x", factor);
+
+    let start = std::time::Instant::now();
+
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Image decode error: {}", e))?;
+
+    let (orig_w, orig_h) = img.dimensions();
+    let new_w = (orig_w as f64 * factor) as u32;
+    let new_h = (orig_h as f64 * factor) as u32;
+
+    info!("Upscaling {}x{} -> {}x{} ({}x)", orig_w, orig_h, new_w, new_h, factor);
+
+    // Use Lanczos3 for highest quality upscaling
+    let upscaled = img.resize_exact(new_w, new_h, image::imageops::FilterType::Lanczos3);
+
+    let mut buf = std::io::Cursor::new(Vec::new());
+    let output_format = match mime_type.as_str() {
+        "image/png" => image::ImageFormat::Png,
+        "image/webp" => image::ImageFormat::WebP,
+        _ => image::ImageFormat::Jpeg,
+    };
+    upscaled.write_to(&mut buf, output_format)
+        .map_err(|e| format!("Image encode error: {}", e))?;
+
+    let result_base64 = STANDARD.encode(buf.into_inner());
+
+    info!("=== UPSCALE_IMAGE END === ({}x{} -> {}x{}, {}ms)",
+        orig_w, orig_h, new_w, new_h, start.elapsed().as_millis());
+
+    Ok(result_base64)
+}
+
+#[cfg(not(feature = "image-processing"))]
+#[tauri::command]
+pub async fn upscale_image(
+    _image_base64: String,
+    _mime_type: String,
+    _scale_factor: Option<f64>,
+) -> Result<String, String> {
+    Err("Image processing feature is not enabled".to_string())
+}
+
+// ============================================
+// SAVE IMAGE TO DISK
+// ============================================
+
+#[tauri::command]
+pub async fn save_image(
+    image_base64: String,
+    file_path: String,
+) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    info!("=== SAVE_IMAGE START === path: {}", file_path);
+
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    std::fs::write(&file_path, &image_bytes)
+        .map_err(|e| format!("File write error: {}", e))?;
+
+    info!("=== SAVE_IMAGE END === ({} bytes written)", image_bytes.len());
+    Ok(file_path)
+}
+
+// ============================================
+// LOCAL IMAGE FILTERS (CLAHE, Sharpen, Bilateral-like)
+// ============================================
+
+#[cfg(feature = "image-processing")]
+#[tauri::command]
+pub async fn apply_local_filters(
+    image_base64: String,
+    mime_type: String,
+    filters: Option<Vec<String>>,
+) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use image::GenericImageView;
+
+    info!("=== APPLY_LOCAL_FILTERS START ===");
+    let start = std::time::Instant::now();
+
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let img = image::load_from_memory(&image_bytes)
+        .map_err(|e| format!("Image decode error: {}", e))?;
+
+    let (w, h) = img.dimensions();
+    info!("Processing {}x{} image", w, h);
+
+    // Default filters if none specified
+    let active_filters = filters.unwrap_or_else(|| vec![
+        "clahe".to_string(),
+        "sharpen".to_string(),
+    ]);
+
+    let mut current = img;
+
+    for filter_name in &active_filters {
+        current = match filter_name.as_str() {
+            "clahe" => apply_clahe(&current),
+            "sharpen" => apply_unsharp_mask(&current, 1.0),
+            "sharpen_mild" => apply_unsharp_mask(&current, 0.5),
+            "sharpen_strong" => apply_unsharp_mask(&current, 2.0),
+            "bilateral" => apply_bilateral_approx(&current),
+            "denoise" => apply_gaussian_denoise(&current, 1.5),
+            "denoise_mild" => apply_gaussian_denoise(&current, 0.8),
+            "denoise_strong" => apply_gaussian_denoise(&current, 3.0),
+            _ => {
+                info!("Unknown filter: {}, skipping", filter_name);
+                current
+            }
+        };
+    }
+
+    let mut buf = std::io::Cursor::new(Vec::new());
+    let output_format = match mime_type.as_str() {
+        "image/png" => image::ImageFormat::Png,
+        "image/webp" => image::ImageFormat::WebP,
+        _ => image::ImageFormat::Jpeg,
+    };
+    current.write_to(&mut buf, output_format)
+        .map_err(|e| format!("Image encode error: {}", e))?;
+
+    let result = STANDARD.encode(buf.into_inner());
+
+    info!("=== APPLY_LOCAL_FILTERS END === (filters: {:?}, {}ms)",
+        active_filters, start.elapsed().as_millis());
+
+    Ok(result)
+}
+
+#[cfg(feature = "image-processing")]
+fn apply_clahe(img: &image::DynamicImage) -> image::DynamicImage {
+    use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
+
+    let (w, h) = img.dimensions();
+    let mut output = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(w, h);
+
+    // Simple CLAHE approximation: adaptive histogram equalization per tile
+    let tile_w = (w / 8).max(16);
+    let tile_h = (h / 8).max(16);
+    let clip_limit: u32 = 40; // histogram bin clip limit
+
+    for ty in (0..h).step_by(tile_h as usize) {
+        for tx in (0..w).step_by(tile_w as usize) {
+            let end_x = (tx + tile_w).min(w);
+            let end_y = (ty + tile_h).min(h);
+
+            // Build luminance histogram for this tile
+            let mut hist = [0u32; 256];
+            let mut count = 0u32;
+
+            for y in ty..end_y {
+                for x in tx..end_x {
+                    let pixel = img.get_pixel(x, y);
+                    let lum = (0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64) as u8;
+                    hist[lum as usize] += 1;
+                    count += 1;
+                }
+            }
+
+            if count == 0 { continue; }
+
+            // Clip histogram
+            let mut excess = 0u32;
+            for bin in hist.iter_mut() {
+                if *bin > clip_limit {
+                    excess += *bin - clip_limit;
+                    *bin = clip_limit;
+                }
+            }
+
+            // Redistribute excess
+            let redistrib = excess / 256;
+            for bin in hist.iter_mut() {
+                *bin += redistrib;
+            }
+
+            // Build CDF
+            let mut cdf = [0u32; 256];
+            cdf[0] = hist[0];
+            for i in 1..256 {
+                cdf[i] = cdf[i - 1] + hist[i];
+            }
+
+            let cdf_min = cdf.iter().copied().find(|&v| v > 0).unwrap_or(0);
+            let denom = (count - cdf_min).max(1);
+
+            // Apply equalization
+            for y in ty..end_y {
+                for x in tx..end_x {
+                    let pixel = img.get_pixel(x, y);
+                    let lum = (0.299 * pixel[0] as f64 + 0.587 * pixel[1] as f64 + 0.114 * pixel[2] as f64) as u8;
+                    let new_lum = ((cdf[lum as usize] - cdf_min) as f64 / denom as f64 * 255.0).clamp(0.0, 255.0) as u8;
+
+                    let scale = if lum > 0 { new_lum as f64 / lum as f64 } else { 1.0 };
+                    let r = (pixel[0] as f64 * scale).clamp(0.0, 255.0) as u8;
+                    let g = (pixel[1] as f64 * scale).clamp(0.0, 255.0) as u8;
+                    let b = (pixel[2] as f64 * scale).clamp(0.0, 255.0) as u8;
+                    output.put_pixel(x, y, Rgba([r, g, b, pixel[3]]));
+                }
+            }
+        }
+    }
+
+    DynamicImage::ImageRgba8(output)
+}
+
+#[cfg(feature = "image-processing")]
+fn apply_unsharp_mask(img: &image::DynamicImage, amount: f64) -> image::DynamicImage {
+    use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
+
+    let (w, h) = img.dimensions();
+    if w < 3 || h < 3 { return img.clone(); }
+
+    // Simple 3x3 Gaussian blur for the mask
+    let blurred = img.blur(1.0);
+    let mut output = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(w, h);
+
+    for y in 0..h {
+        for x in 0..w {
+            let orig = img.get_pixel(x, y);
+            let blur = blurred.get_pixel(x, y);
+
+            let r = ((orig[0] as f64 + amount * (orig[0] as f64 - blur[0] as f64)).clamp(0.0, 255.0)) as u8;
+            let g = ((orig[1] as f64 + amount * (orig[1] as f64 - blur[1] as f64)).clamp(0.0, 255.0)) as u8;
+            let b = ((orig[2] as f64 + amount * (orig[2] as f64 - blur[2] as f64)).clamp(0.0, 255.0)) as u8;
+            output.put_pixel(x, y, Rgba([r, g, b, orig[3]]));
+        }
+    }
+
+    DynamicImage::ImageRgba8(output)
+}
+
+#[cfg(feature = "image-processing")]
+fn apply_bilateral_approx(img: &image::DynamicImage) -> image::DynamicImage {
+    use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
+
+    let (w, h) = img.dimensions();
+    if w < 5 || h < 5 { return img.clone(); }
+
+    let mut output = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(w, h);
+    let radius: i32 = 3;
+    let sigma_space: f64 = 3.0;
+    let sigma_color: f64 = 50.0;
+
+    for y in 0..h {
+        for x in 0..w {
+            let center = img.get_pixel(x, y);
+            let mut sum_r = 0.0f64;
+            let mut sum_g = 0.0f64;
+            let mut sum_b = 0.0f64;
+            let mut weight_sum = 0.0f64;
+
+            for dy in -radius..=radius {
+                for dx in -radius..=radius {
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx < 0 || ny < 0 || nx >= w as i32 || ny >= h as i32 { continue; }
+
+                    let neighbor = img.get_pixel(nx as u32, ny as u32);
+
+                    // Spatial weight
+                    let spatial = (-((dx * dx + dy * dy) as f64) / (2.0 * sigma_space * sigma_space)).exp();
+
+                    // Color weight
+                    let diff_r = center[0] as f64 - neighbor[0] as f64;
+                    let diff_g = center[1] as f64 - neighbor[1] as f64;
+                    let diff_b = center[2] as f64 - neighbor[2] as f64;
+                    let color_dist = diff_r * diff_r + diff_g * diff_g + diff_b * diff_b;
+                    let color_w = (-(color_dist) / (2.0 * sigma_color * sigma_color)).exp();
+
+                    let weight = spatial * color_w;
+                    sum_r += neighbor[0] as f64 * weight;
+                    sum_g += neighbor[1] as f64 * weight;
+                    sum_b += neighbor[2] as f64 * weight;
+                    weight_sum += weight;
+                }
+            }
+
+            if weight_sum > 0.0 {
+                output.put_pixel(x, y, Rgba([
+                    (sum_r / weight_sum).clamp(0.0, 255.0) as u8,
+                    (sum_g / weight_sum).clamp(0.0, 255.0) as u8,
+                    (sum_b / weight_sum).clamp(0.0, 255.0) as u8,
+                    center[3],
+                ]));
+            } else {
+                output.put_pixel(x, y, center);
+            }
+        }
+    }
+
+    DynamicImage::ImageRgba8(output)
+}
+
+#[cfg(feature = "image-processing")]
+fn apply_gaussian_denoise(img: &image::DynamicImage, sigma: f64) -> image::DynamicImage {
+    img.blur(sigma as f32)
+}
+
+#[cfg(not(feature = "image-processing"))]
+#[tauri::command]
+pub async fn apply_local_filters(
+    _image_base64: String,
+    _mime_type: String,
+    _filters: Option<Vec<String>>,
+) -> Result<String, String> {
+    Err("Image processing feature is not enabled".to_string())
+}
+
+// ============================================
+// EXIF METADATA EXTRACTION
+// ============================================
+
+#[cfg(feature = "image-processing")]
+#[tauri::command]
+pub async fn extract_metadata(
+    image_base64: String,
+    mime_type: String,
+) -> Result<serde_json::Value, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    info!("=== EXTRACT_METADATA START ===");
+
+    let image_bytes = STANDARD.decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let mut metadata = serde_json::Map::new();
+
+    // Get image dimensions
+    if let Ok(img) = image::load_from_memory(&image_bytes) {
+        use image::GenericImageView;
+        let (w, h) = img.dimensions();
+        metadata.insert("width".to_string(), serde_json::json!(w));
+        metadata.insert("height".to_string(), serde_json::json!(h));
+        metadata.insert("color_type".to_string(), serde_json::json!(format!("{:?}", img.color())));
+    }
+
+    metadata.insert("mime_type".to_string(), serde_json::json!(mime_type));
+    metadata.insert("file_size".to_string(), serde_json::json!(image_bytes.len()));
+
+    // Extract EXIF data
+    let mut cursor = std::io::Cursor::new(&image_bytes);
+    if let Ok(exif_data) = exif::Reader::new().read_from_container(&mut cursor) {
+        let mut exif_map = serde_json::Map::new();
+
+        for field in exif_data.fields() {
+            let tag_name = format!("{}", field.tag);
+            let value = format!("{}", field.display_value().with_unit(&exif_data));
+            exif_map.insert(tag_name, serde_json::json!(value));
+        }
+
+        if !exif_map.is_empty() {
+            metadata.insert("exif".to_string(), serde_json::Value::Object(exif_map));
+        }
+    }
+
+    info!("=== EXTRACT_METADATA END ===");
+    Ok(serde_json::Value::Object(metadata))
+}
+
+#[cfg(not(feature = "image-processing"))]
+#[tauri::command]
+pub async fn extract_metadata(
+    _image_base64: String,
+    _mime_type: String,
+) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({"error": "Image processing feature is not enabled"}))
 }
 
 // ============================================

@@ -18,6 +18,7 @@ interface HeaderProps {
 // View labels
 const viewLabels: Record<string, { pl: string; en: string }> = {
   upload: { pl: 'Wgraj', en: 'Upload' },
+  crop: { pl: 'Kadrowanie', en: 'Crop' },
   analyze: { pl: 'Analiza', en: 'Analyze' },
   restore: { pl: 'Restauracja', en: 'Restore' },
   results: { pl: 'Wyniki', en: 'Results' },
@@ -43,7 +44,7 @@ export default function Header({ status }: HeaderProps) {
           <button
             type="button"
             onClick={() => setCurrentView('upload')}
-            className={`flex items-center gap-1 ${theme.textMuted} ${theme.isLight ? 'hover:text-emerald-600' : 'hover:text-matrix-accent'} transition-colors`}
+            className={`flex items-center gap-1 ${theme.textMuted} ${theme.isLight ? 'hover:text-emerald-600' : 'hover:text-white'} transition-colors`}
           >
             <Home size={14} />
             <span className="font-medium">Tissaia</span>
@@ -56,7 +57,7 @@ export default function Header({ status }: HeaderProps) {
             <span
               className={`w-2 h-2 rounded-full ${
                 status === 'healthy'
-                  ? `${resolvedTheme === 'light' ? 'bg-emerald-500' : 'bg-matrix-accent'} animate-pulse`
+                  ? `${resolvedTheme === 'light' ? 'bg-emerald-500' : 'bg-white'} animate-pulse`
                   : 'bg-yellow-500'
               }`}
             />

@@ -4,23 +4,25 @@
  * =====================
  * AI-powered detection and separation of individual photos from scans.
  * After separation, automatically runs the full pipeline (analysis + restoration).
+ *
+ * Uses the TissaiaPipeline orchestrator via usePipeline hook for:
+ * - 4-stage processing (Ingestion → Detection → SmartCrop → Alchemy)
+ * - Pause/Resume/Cancel
+ * - Real-time progress with ETA
+ * - Per-photo retry with exponential backoff
  */
 
-import { ArrowRight, Loader2, Scan, Scissors, SkipForward, X } from 'lucide-react';
+import { ArrowRight, Loader2, Pause, Play, Scan, Scissors, SkipForward, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from '../../hooks/api/mocks';
-import type { BoundingBox, RestorationResult } from '../../hooks/api/types';
-import { useCropPhotos, useDetectPhotos } from '../../hooks/api/useCrop';
-import {
-  useVerifyCrop,
-  useVerifyDetection,
-  useVerifyRestoration,
-} from '../../hooks/api/useVerification';
-import { delay, fileToBase64, safeInvoke } from '../../hooks/api/utils';
+import type { BoundingBox } from '../../hooks/api/types';
+import { useDetectPhotos } from '../../hooks/api/useCrop';
+import { useVerifyDetection } from '../../hooks/api/useVerification';
+import { fileToBase64 } from '../../hooks/api/utils';
+import { usePipeline } from '../../hooks/usePipeline';
+import { useViewTheme } from '../../hooks/useViewTheme';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
-import { isTauri } from '../../utils/tauri';
 import VerificationBadge from '../ui/VerificationBadge';
 
 // ============================================
@@ -41,10 +43,10 @@ function BoxOverlay({ box, index, onRemove }: BoxOverlayProps) {
 
   return (
     <div
-      className="absolute border-2 border-matrix-accent/80 bg-matrix-accent/10 group cursor-pointer hover:bg-matrix-accent/20 transition-all"
+      className="absolute border-2 border-white/70 bg-white/10 group cursor-pointer hover:bg-white/20 transition-all"
       style={{ left, top, width, height }}
     >
-      <div className="absolute -top-6 left-0 bg-matrix-accent text-black text-xs font-bold px-2 py-0.5 rounded-t">
+      <div className="absolute -top-6 left-0 bg-white text-black text-xs font-bold px-2 py-0.5 rounded-t">
         #{index + 1}
         {box.confidence < 0.8 && ' ?'}
       </div>
@@ -63,31 +65,69 @@ function BoxOverlay({ box, index, onRemove }: BoxOverlayProps) {
 }
 
 // ============================================
-// PIPELINE PROGRESS
+// PIPELINE PROGRESS (enhanced with ETA)
 // ============================================
 
 interface PipelineProgressProps {
   total: number;
   current: number;
   stage: string;
+  overallProgress: number;
+  estimatedTimeRemaining: number | null;
 }
 
-function PipelineProgress({ total, current, stage }: PipelineProgressProps) {
-  const progress = total > 0 ? ((current - 1) / total) * 100 : 0;
+function PipelineProgressBar({
+  total,
+  current,
+  stage,
+  overallProgress,
+  estimatedTimeRemaining,
+}: PipelineProgressProps) {
+  const theme = useViewTheme();
+
+  const formatEta = (ms: number | null): string => {
+    if (ms == null || ms <= 0) return '';
+    const seconds = Math.ceil(ms / 1000);
+    if (seconds < 60) return `~${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `~${minutes}m ${secs}s`;
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-matrix-text-dim">
-          Przetwarzanie {current}/{total}
-        </span>
-        <span className="text-matrix-accent">{stage}</span>
+    <div className="w-full max-w-md space-y-4">
+      {/* Stage label with spinner */}
+      <div className="flex items-center justify-center gap-3">
+        <Loader2 size={18} className={`${theme.textAccent} animate-spin`} />
+        <span className={`text-sm font-medium ${theme.textAccent}`}>{stage}</span>
       </div>
-      <div className="h-2 bg-matrix-bg-secondary rounded-full overflow-hidden">
+
+      {/* Progress bar */}
+      <div
+        className={`relative h-2.5 ${theme.isLight ? 'bg-slate-200' : 'bg-white/10'} rounded-full overflow-hidden`}
+      >
         <div
-          className="h-full bg-matrix-accent transition-all duration-500 rounded-full"
-          style={{ width: `${progress}%` }}
+          className={`h-full ${theme.isLight ? 'bg-emerald-500' : 'bg-white'} rounded-full transition-all duration-700 ease-out`}
+          style={{ width: `${overallProgress}%` }}
         />
+        {/* Shimmer effect */}
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_1.5s_ease-in-out_infinite]"
+          style={{ backgroundSize: '200% 100%' }}
+        />
+      </div>
+
+      {/* Counter + ETA */}
+      <div className="flex items-center justify-between text-xs">
+        <span className={theme.textMuted}>
+          {total > 0 ? `Zdjęcie ${current} z ${total}` : stage}
+        </span>
+        <div className="flex items-center gap-3">
+          {estimatedTimeRemaining != null && estimatedTimeRemaining > 0 && (
+            <span className={theme.textMuted}>{formatEta(estimatedTimeRemaining)}</span>
+          )}
+          <span className={`font-mono ${theme.textAccent}`}>{Math.round(overallProgress)}%</span>
+        </div>
       </div>
     </div>
   );
@@ -103,29 +143,31 @@ export default function CropView() {
   const setProgressMessage = useViewStore((s) => s.setProgressMessage);
   const photos = usePhotoStore((s) => s.photos);
   const setDetectionResult = usePhotoStore((s) => s.setDetectionResult);
-  const setCroppedPhotos = usePhotoStore((s) => s.setCroppedPhotos);
-  const setPipelineResult = usePhotoStore((s) => s.setPipelineResult);
-  const clearPipelineResults = usePhotoStore((s) => s.clearPipelineResults);
 
   const [boxes, setBoxes] = useState<BoundingBox[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [isPipelining, setIsPipelining] = useState(false);
-  const [pipelineCurrent, setPipelineCurrent] = useState(0);
-  const [pipelineStage, setPipelineStage] = useState('');
-  const [pipelineTotal, setPipelineTotal] = useState(0);
+  const theme = useViewTheme();
+
+  // Pipeline hook (replaces manual pipeline logic)
+  const pipeline = usePipeline({
+    enableUpscale: true,
+    upscaleFactor: 2.0,
+    enableVerification: true,
+  });
 
   const detectMutation = useDetectPhotos();
-  const cropMutation = useCropPhotos();
   const verifyDetectionMutation = useVerifyDetection();
-  const verifyCropMutation = useVerifyCrop();
-  const verifyRestorationMutation = useVerifyRestoration();
   const setVerificationResult = usePhotoStore((s) => s.setVerificationResult);
   const verificationResults = usePhotoStore((s) => s.verificationResults);
   const hasDetected = useRef(false);
-  const pipelineCancelledRef = useRef(false);
 
-  // Current photo (first one)
-  const currentPhoto = photos[0];
+  const verifyDetectionRef = useRef(verifyDetectionMutation);
+  verifyDetectionRef.current = verifyDetectionMutation;
+  const setVerificationResultRef = useRef(setVerificationResult);
+  setVerificationResultRef.current = setVerificationResult;
+
+  // Current photo (latest added one)
+  const currentPhoto = photos[photos.length - 1];
 
   // Redirect if no photos
   useEffect(() => {
@@ -133,6 +175,16 @@ export default function CropView() {
       setCurrentView('upload');
     }
   }, [photos, setCurrentView]);
+
+  // Reset detection state when current photo changes
+  useEffect(() => {
+    if (currentPhoto) {
+      hasDetected.current = false;
+      setBoxes([]);
+      setDetectionResult(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPhoto?.id, currentPhoto, setDetectionResult]);
 
   const runDetection = useCallback(async () => {
     if (!currentPhoto) return;
@@ -152,24 +204,45 @@ export default function CropView() {
 
         // Fire-and-forget: verify detection
         fileToBase64(currentPhoto.file).then(({ base64, mimeType }) => {
-          verifyDetectionMutation
+          verifyDetectionRef.current
             .mutateAsync({
               imageBase64: base64,
               mimeType,
               boundingBoxes: result.bounding_boxes,
             })
-            .then((vr) => setVerificationResult('detection', vr))
+            .then((vr) => {
+              setVerificationResultRef.current('detection', vr);
+            })
             .catch(() => {});
         });
       } else {
         toast.info('Nie wykryto oddzielnych zdjęć — traktowane jako jedno');
-        setBoxes([{ x: 0, y: 0, width: 1000, height: 1000, confidence: 1.0, label: 'full scan' }]);
+        setBoxes([
+          {
+            x: 0,
+            y: 0,
+            width: 1000,
+            height: 1000,
+            confidence: 1.0,
+            label: 'full scan',
+            rotation_angle: 0,
+          },
+        ]);
       }
     } catch (error) {
       console.error('[CropView] Detection error:', error);
       toast.error('Błąd wykrywania zdjęć');
-      // Fallback: treat as single photo
-      setBoxes([{ x: 0, y: 0, width: 1000, height: 1000, confidence: 1.0, label: 'full scan' }]);
+      setBoxes([
+        {
+          x: 0,
+          y: 0,
+          width: 1000,
+          height: 1000,
+          confidence: 1.0,
+          label: 'full scan',
+          rotation_angle: 0,
+        },
+      ]);
     } finally {
       setIsDetecting(false);
       setIsLoading(false);
@@ -190,134 +263,77 @@ export default function CropView() {
     setBoxes((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Cancel pipeline on unmount
-  useEffect(() => {
-    return () => {
-      pipelineCancelledRef.current = true;
-    };
-  }, []);
-
-  // Run full pipeline: crop → restore per photo
+  // Run full pipeline via TissaiaPipeline orchestrator
   const runFullPipeline = useCallback(async () => {
     if (!currentPhoto || boxes.length === 0) return;
 
-    pipelineCancelledRef.current = false;
-    setIsPipelining(true);
     setIsLoading(true);
-    clearPipelineResults();
 
     try {
-      // Step 1: Crop
-      if (pipelineCancelledRef.current) return;
-      setPipelineStage('Wycinanie zdjęć...');
-      setPipelineTotal(boxes.length);
-      setPipelineCurrent(0);
+      const report = await pipeline.start(currentPhoto.file, boxes);
 
-      const cropResult = await cropMutation.mutateAsync({
-        file: currentPhoto.file,
-        boundingBoxes: boxes,
-        originalFilename: currentPhoto.name,
-      });
-
-      if (pipelineCancelledRef.current) return;
-
-      setCroppedPhotos(cropResult.photos);
-      console.log('[CropView] Cropped:', cropResult.photos.length, 'photos');
-
-      // Step 2: For each cropped photo, run restoration
-      for (let i = 0; i < cropResult.photos.length; i++) {
-        if (pipelineCancelledRef.current) return;
-
-        const croppedPhoto = cropResult.photos[i];
-        setPipelineCurrent(i + 1);
-
-        // Restore
-        if (pipelineCancelledRef.current) return;
-        setPipelineStage(`Restauracja zdjęcia ${i + 1}/${cropResult.photos.length}...`);
-        setProgressMessage(`Restauracja zdjęcia ${i + 1}/${cropResult.photos.length}`);
-
-        let restorationResult: RestorationResult;
-        if (!isTauri()) {
-          await delay(MOCK_RESTORATION_DELAY);
-          restorationResult = createMockRestorationResult(croppedPhoto.image_base64);
-        } else {
-          restorationResult = await safeInvoke<RestorationResult>('restore_image', {
-            imageBase64: croppedPhoto.image_base64,
-            mimeType: croppedPhoto.mime_type,
-          });
-        }
-
-        if (pipelineCancelledRef.current) return;
-        setPipelineResult(croppedPhoto.id, restorationResult);
-
-        // Fire-and-forget: verify crop quality
-        verifyCropMutation
-          .mutateAsync({
-            croppedBase64: croppedPhoto.image_base64,
-            mimeType: croppedPhoto.mime_type,
-            cropIndex: i,
-          })
-          .then((vr) => setVerificationResult(`crop_${croppedPhoto.id}`, vr))
-          .catch(() => {});
-
-        // Fire-and-forget: verify restoration quality
-        verifyRestorationMutation
-          .mutateAsync({
-            originalBase64: croppedPhoto.image_base64,
-            restoredBase64: restorationResult.restored_image,
-            mimeType: croppedPhoto.mime_type,
-          })
-          .then((vr) => setVerificationResult(`restoration_${croppedPhoto.id}`, vr))
-          .catch(() => {});
-
-        toast.success(`Zdjęcie ${i + 1} przetworzone`);
+      if (report) {
+        toast.success('Pipeline zakończony!');
+        setCurrentView('results');
       }
-
-      if (pipelineCancelledRef.current) return;
-      toast.success('Pipeline zakończony!');
-      setCurrentView('results');
     } catch (error) {
-      if (pipelineCancelledRef.current) return;
-      console.error('[CropView] Pipeline error:', error);
-      toast.error(error instanceof Error ? error.message : 'Błąd pipeline');
-    } finally {
-      if (!pipelineCancelledRef.current) {
-        setIsPipelining(false);
-        setIsLoading(false);
-        setProgressMessage('');
+      if (pipeline.error) {
+        toast.error(pipeline.error);
+      } else {
+        console.error('[CropView] Pipeline error:', error);
+        toast.error(error instanceof Error ? error.message : 'Błąd pipeline');
       }
+    } finally {
+      setIsLoading(false);
+      setProgressMessage('');
     }
-  }, [
-    currentPhoto,
-    boxes,
-    cropMutation,
-    clearPipelineResults,
-    setCroppedPhotos,
-    setPipelineResult,
-    setCurrentView,
-    setIsLoading,
-    setProgressMessage,
-  ]);
+  }, [currentPhoto, boxes, pipeline, setCurrentView, setIsLoading, setProgressMessage]);
 
   // Skip crop — go directly to pipeline with full image
   const skipCrop = useCallback(() => {
-    setBoxes([{ x: 0, y: 0, width: 1000, height: 1000, confidence: 1.0, label: 'full image' }]);
-    // Will trigger pipeline on next render with "Rozdziel" button
+    setBoxes([
+      {
+        x: 0,
+        y: 0,
+        width: 1000,
+        height: 1000,
+        confidence: 1.0,
+        label: 'full image',
+        rotation_angle: 0,
+      },
+    ]);
   }, []);
 
+  // Sync pipeline progress message to global state
+  useEffect(() => {
+    if (pipeline.progress?.message) {
+      setProgressMessage(pipeline.progress.message);
+    }
+  }, [pipeline.progress?.message, setProgressMessage]);
+
+  // Navigate to results when pipeline completes
+  useEffect(() => {
+    if (pipeline.report && !pipeline.isRunning) {
+      setCurrentView('results');
+    }
+  }, [pipeline.report, pipeline.isRunning, setCurrentView]);
+
   if (!currentPhoto) return null;
+
+  const isPipelining = pipeline.isRunning;
+  const progressData = pipeline.progress;
 
   return (
     <div className="p-6 h-full flex flex-col">
       {/* Title */}
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-matrix-accent/10">
-            <Scissors className="text-matrix-accent" size={24} />
+          <div className={`p-2 rounded-xl ${theme.accentBg}`}>
+            <Scissors className={theme.iconAccent} size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-matrix-accent">Rozdziel zdjęcia</h2>
-            <p className="text-matrix-text-dim mt-1">
+            <h2 className={`text-2xl font-bold ${theme.textAccent}`}>Rozdziel zdjęcia</h2>
+            <p className={`${theme.textMuted} mt-1`}>
               {isDetecting ? 'Wykrywanie zdjęć na skanie...' : `Wykryto ${boxes.length} zdjęć`}
             </p>
           </div>
@@ -325,52 +341,111 @@ export default function CropView() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {isPipelining ? (
-          <div className="flex flex-col items-center justify-center h-full gap-6">
-            <Loader2 size={48} className="text-matrix-accent animate-spin" />
-            <PipelineProgress
-              total={pipelineTotal}
-              current={pipelineCurrent}
-              stage={pipelineStage}
+          <div className="flex flex-col items-center justify-center h-full gap-8">
+            <div className="relative">
+              <div
+                className={`w-20 h-20 rounded-full border-4 ${theme.isLight ? 'border-emerald-500/20' : 'border-white/10'}`}
+              />
+              <div
+                className={`absolute inset-0 w-20 h-20 rounded-full border-4 border-transparent ${theme.isLight ? 'border-t-emerald-500' : 'border-t-white'} animate-spin`}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Scissors size={24} className={`${theme.textAccent}`} />
+              </div>
+            </div>
+            <PipelineProgressBar
+              total={progressData?.totalPhotos ?? 0}
+              current={progressData?.currentPhotoIndex ?? 0}
+              stage={progressData?.message ?? 'Inicjalizacja...'}
+              overallProgress={progressData?.overallProgress ?? 0}
+              estimatedTimeRemaining={progressData?.estimatedTimeRemaining ?? null}
             />
+            {/* Pause/Resume + Cancel buttons */}
+            <div className="flex gap-3">
+              {pipeline.isPaused ? (
+                <button
+                  type="button"
+                  onClick={pipeline.resume}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm border ${theme.border} rounded-lg ${theme.isLight ? 'hover:border-emerald-500/50' : 'hover:border-white/40'} transition-colors`}
+                >
+                  <Play size={14} />
+                  Wznów
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={pipeline.pause}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm border ${theme.border} rounded-lg ${theme.isLight ? 'hover:border-emerald-500/50' : 'hover:border-white/40'} transition-colors`}
+                >
+                  <Pause size={14} />
+                  Pauza
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  pipeline.cancel();
+                  setIsLoading(false);
+                  setProgressMessage('');
+                  toast.info('Pipeline anulowany');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 border border-red-500/30 rounded-lg hover:border-red-500/60 transition-colors"
+              >
+                <X size={14} />
+                Anuluj
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="glass-panel p-4">
+          <div className={`${theme.glassPanel} p-4 h-full flex flex-col`}>
             {/* Scan preview with bounding boxes */}
-            <div className="relative inline-block w-full">
-              <img
-                src={currentPhoto.preview}
-                alt={currentPhoto.name}
-                className="w-full h-auto rounded-lg"
-              />
-              {!isDetecting &&
-                boxes.map((box, idx) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: boxes are dynamically reordered by user
-                  <BoxOverlay key={idx} box={box} index={idx} onRemove={removeBox} />
-                ))}
-              {isDetecting && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                  <div className="text-center">
-                    <Scan size={48} className="mx-auto mb-3 text-matrix-accent animate-pulse" />
-                    <p className="text-matrix-accent">Analizuję skan...</p>
+            <div className="flex-1 min-h-0 flex items-center justify-center">
+              <div className="relative inline-block max-w-full max-h-full">
+                <img
+                  src={currentPhoto.preview}
+                  alt={currentPhoto.name}
+                  className="block max-w-full max-h-[calc(100vh-320px)] object-contain rounded-lg"
+                />
+                {!isDetecting &&
+                  boxes.map((box, idx) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: boxes are dynamically reordered by user
+                    <BoxOverlay key={idx} box={box} index={idx} onRemove={removeBox} />
+                  ))}
+                {isDetecting && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                    <div className="text-center">
+                      <Scan
+                        size={48}
+                        className={`mx-auto mb-3 ${theme.textAccent} animate-pulse`}
+                      />
+                      <p className={theme.textAccent}>Analizuję skan...</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Box count + verification */}
             {!isDetecting && (
               <div className="mt-4 space-y-2">
-                <div className="text-sm text-matrix-text-dim">
+                <div className={`text-sm ${theme.textMuted}`}>
                   Kliknij X na ramce, aby ją usunąć. Wykryte zdjęcia: {boxes.length}
                 </div>
-                {(verifyDetectionMutation.isPending || verificationResults['detection']) && (
+                {(verifyDetectionMutation.isPending || verificationResults.detection) && (
                   <VerificationBadge
-                    result={verificationResults['detection'] ?? null}
+                    result={verificationResults.detection ?? null}
                     isLoading={verifyDetectionMutation.isPending}
                   />
                 )}
+              </div>
+            )}
+
+            {/* Pipeline error display */}
+            {pipeline.error && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                {pipeline.error}
               </div>
             )}
           </div>
@@ -383,7 +458,7 @@ export default function CropView() {
           <button
             type="button"
             onClick={skipCrop}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-matrix-text-dim hover:text-white transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 text-sm ${theme.textMuted} ${theme.isLight ? 'hover:text-black' : 'hover:text-white'} transition-colors`}
           >
             <SkipForward size={16} />
             Pomiń (jedno zdjęcie)
@@ -396,7 +471,8 @@ export default function CropView() {
                 hasDetected.current = false;
                 runDetection();
               }}
-              className="px-4 py-2 text-sm border border-matrix-border rounded-lg hover:border-matrix-accent/50 transition-colors"
+              disabled={isDetecting || isPipelining || detectMutation.isPending}
+              className={`px-4 py-2 text-sm border ${theme.border} rounded-lg ${theme.isLight ? 'hover:border-emerald-500/50' : 'hover:border-white/40'} transition-colors disabled:opacity-50`}
             >
               Ponów detekcję
             </button>
@@ -404,7 +480,7 @@ export default function CropView() {
             <button
               type="button"
               onClick={runFullPipeline}
-              disabled={boxes.length === 0}
+              disabled={boxes.length === 0 || isPipelining}
               className="btn-glow flex items-center gap-2 disabled:opacity-50"
             >
               Rozdziel i restauruj ({boxes.length})

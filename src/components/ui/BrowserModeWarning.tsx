@@ -59,7 +59,7 @@ export default function BrowserModeWarning() {
       >
         {/* Matrix scanline effect */}
         <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00ff41]/5 to-transparent pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none"
           animate={{ x: ['-100%', '100%'] }}
           transition={{
             duration: 3,
@@ -120,7 +120,7 @@ export default function BrowserModeWarning() {
                   ? 'hover:bg-amber-200/50 text-amber-600 hover:text-amber-800'
                   : 'hover:bg-amber-500/20 text-amber-400 hover:text-amber-300'
               }
-              focus:outline-none focus:ring-2 focus:ring-[#00ff41]/50
+              focus:outline-none focus:ring-2 focus:ring-white/30
             `}
             aria-label="Zamknij ostrzezenie"
           >
@@ -141,7 +141,7 @@ export default function BrowserModeWarning() {
         <div
           className="absolute bottom-0 left-0 right-0 h-[2px]"
           style={{
-            background: `linear-gradient(90deg, transparent, #00ff41, transparent)`,
+            background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
           }}
         />
       </motion.div>

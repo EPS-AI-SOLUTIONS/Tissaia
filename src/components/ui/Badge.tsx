@@ -19,13 +19,13 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-matrix-accent/10 text-matrix-accent border border-matrix-accent/30',
-        success: 'bg-green-500/10 text-green-400 border border-green-500/30',
+        default: 'bg-white/10 text-white border border-white/20',
+        success: 'bg-white/10 text-white/80 border border-white/20',
         warning: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
         error: 'bg-red-500/10 text-red-400 border border-red-500/30',
         info: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
-        muted: 'bg-matrix-bg-secondary text-matrix-text-dim border border-matrix-border',
-        outline: 'bg-transparent text-matrix-text border border-matrix-border',
+        muted: 'bg-white/5 text-white/50 border border-white/10',
+        outline: 'bg-transparent text-white/80 border border-white/10',
         // Provider-specific variants
         google: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
         anthropic: 'bg-orange-500/10 text-orange-400 border border-orange-500/30',

@@ -55,8 +55,8 @@ export default function PhotoPreview({
   const borderClass =
     active !== undefined
       ? active
-        ? 'border-2 border-matrix-accent'
-        : 'border-2 border-matrix-border hover:border-matrix-accent/50'
+        ? 'border-2 border-white'
+        : 'border-2 border-white/10 hover:border-white/30'
       : '';
 
   return (

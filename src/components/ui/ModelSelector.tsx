@@ -27,7 +27,7 @@ const providerIcons: Record<string, React.ReactNode> = {
   mistral: <Cpu size={16} className="text-purple-400" />,
   groq: <Zap size={16} className="text-yellow-400" />,
   ollama: <Cpu size={16} className="text-gray-400" />,
-  mock: <Cpu size={16} className="text-matrix-accent" />,
+  mock: <Cpu size={16} className="text-white" />,
 };
 
 // ============================================
@@ -84,10 +84,10 @@ export default function ModelSelector({ className = '', compact = false }: Model
   if (modelsLoading) {
     return (
       <div
-        className={`flex items-center gap-2 px-3 py-2 bg-matrix-bg-secondary rounded-lg animate-pulse ${className}`}
+        className={`flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg animate-pulse ${className}`}
       >
-        <Cpu size={16} className="text-matrix-text-dim" />
-        <span className="text-sm text-matrix-text-dim">Ładowanie modeli...</span>
+        <Cpu size={16} className="text-white/50" />
+        <span className="text-sm text-white/50">Ładowanie modeli...</span>
       </div>
     );
   }
@@ -100,19 +100,19 @@ export default function ModelSelector({ className = '', compact = false }: Model
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center gap-2 px-3 py-2 rounded-lg transition-all
-          bg-matrix-bg-secondary border border-matrix-border
-          hover:border-matrix-accent/50 hover:bg-matrix-bg-secondary/80
-          ${isOpen ? 'border-matrix-accent ring-1 ring-matrix-accent/30' : ''}
+          bg-white/5 border border-white/10
+          hover:border-white/30 hover:bg-white/10
+          ${isOpen ? 'border-white/40 ring-1 ring-white/20' : ''}
           ${compact ? 'text-xs' : 'text-sm'}
         `}
       >
         {selectedModel && providerIcons[selectedModel.provider]}
-        <span className="text-matrix-text font-medium truncate max-w-[120px]">
+        <span className="text-white/80 font-medium truncate max-w-[120px]">
           {selectedModel?.name || 'Wybierz model'}
         </span>
         <ChevronDown
           size={16}
-          className={`text-matrix-text-dim transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-white/50 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -125,15 +125,15 @@ export default function ModelSelector({ className = '', compact = false }: Model
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
             className="absolute right-0 top-full mt-2 w-72 z-50
-              bg-matrix-bg-secondary/95 backdrop-blur-xl
-              border border-matrix-border rounded-xl shadow-xl overflow-hidden"
+              bg-white/5/95 backdrop-blur-xl
+              border border-white/10 rounded-xl shadow-xl overflow-hidden"
           >
             {/* Header */}
-            <div className="px-4 py-3 border-b border-matrix-border bg-matrix-bg-primary/50">
-              <h4 className="text-sm font-semibold text-matrix-text">
+            <div className="px-4 py-3 border-b border-white/10 bg-black/50">
+              <h4 className="text-sm font-semibold text-white/80">
                 {t('settings.selectModel', 'Wybierz model AI')}
               </h4>
-              <p className="text-xs text-matrix-text-dim mt-0.5">
+              <p className="text-xs text-white/50 mt-0.5">
                 {t('settings.modelDescription', 'Model używany do analizy i restauracji')}
               </p>
             </div>
@@ -146,7 +146,7 @@ export default function ModelSelector({ className = '', compact = false }: Model
                     {/* Provider Header */}
                     <div className="flex items-center gap-2 px-2 py-1.5">
                       {providerIcons[provider]}
-                      <span className="text-xs font-semibold text-matrix-text-dim uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
                         {provider}
                       </span>
                     </div>
@@ -164,12 +164,12 @@ export default function ModelSelector({ className = '', compact = false }: Model
                             transition-all text-left
                             ${
                               model.isAvailable
-                                ? 'hover:bg-matrix-accent/10 cursor-pointer'
+                                ? 'hover:bg-white/10 cursor-pointer'
                                 : 'opacity-50 cursor-not-allowed'
                             }
                             ${
                               selectedModelId === model.id
-                                ? 'bg-matrix-accent/20 border border-matrix-accent/50'
+                                ? 'bg-white/15 border border-white/30'
                                 : 'border border-transparent'
                             }
                           `}
@@ -177,13 +177,13 @@ export default function ModelSelector({ className = '', compact = false }: Model
                           {/* Selection Indicator */}
                           <div className="w-4 h-4 flex items-center justify-center">
                             {selectedModelId === model.id && (
-                              <Check size={14} className="text-matrix-accent" />
+                              <Check size={14} className="text-white" />
                             )}
                           </div>
 
                           {/* Model Info */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-matrix-text truncate">
+                            <div className="text-sm font-medium text-white/80 truncate">
                               {model.name}
                             </div>
                             <div className="flex items-center gap-1 mt-0.5">
@@ -193,7 +193,7 @@ export default function ModelSelector({ className = '', compact = false }: Model
                                   className={`
                                     text-[10px] px-1.5 py-0.5 rounded
                                     ${cap === 'vision' ? 'bg-blue-500/20 text-blue-400' : ''}
-                                    ${cap === 'text' ? 'bg-green-500/20 text-green-400' : ''}
+                                    ${cap === 'text' ? 'bg-white/15 text-white/80' : ''}
                                     ${cap === 'restoration' ? 'bg-purple-500/20 text-purple-400' : ''}
                                   `}
                                 >
@@ -217,8 +217,8 @@ export default function ModelSelector({ className = '', compact = false }: Model
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-2 border-t border-matrix-border bg-matrix-bg-primary/50">
-              <p className="text-[10px] text-matrix-text-dim">
+            <div className="px-4 py-2 border-t border-white/10 bg-black/50">
+              <p className="text-[10px] text-white/50">
                 💡 Dodaj klucze API w Ustawienia → Klucze API
               </p>
             </div>

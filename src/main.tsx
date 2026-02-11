@@ -43,15 +43,10 @@ createRoot(rootElement).render(
         <Toaster
           position="bottom-right"
           toastOptions={{
-            className:
-              'bg-matrix-glass backdrop-blur-md border border-matrix-border text-matrix-text',
+            className: 'backdrop-blur-md',
             duration: 4000,
-            style: {
-              background: 'rgba(10, 31, 10, 0.9)',
-              color: '#c0ffc0',
-              border: '1px solid #1a3a1a',
-            },
           }}
+          theme="system"
         />
       </ThemeProvider>
     </QueryClientProvider>

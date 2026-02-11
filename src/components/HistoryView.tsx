@@ -96,10 +96,10 @@ export default function HistoryView() {
                   <div className="flex items-center gap-4">
                     {/* Status Icon */}
                     <div
-                      className={`p-2 rounded-lg ${entry.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}
+                      className={`p-2 rounded-lg ${entry.success ? 'bg-white/10' : 'bg-red-500/10'}`}
                     >
                       {entry.success ? (
-                        <CheckCircle size={24} className="text-green-500" />
+                        <CheckCircle size={24} className="text-white" />
                       ) : (
                         <XCircle size={24} className="text-red-500" />
                       )}
@@ -108,7 +108,11 @@ export default function HistoryView() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold capitalize ${theme.title}`}>
-                        {entry.operation === 'photoseparation' ? 'Separacja' : 'Restauracja'}
+                        {entry.operation === 'photoseparation'
+                          ? 'Separacja'
+                          : entry.operation === 'analysis'
+                            ? 'Analiza'
+                            : 'Restauracja'}
                       </h3>
 
                       <div className={`flex items-center gap-4 mt-1 text-sm ${theme.textMuted}`}>

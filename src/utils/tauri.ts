@@ -3,14 +3,19 @@
  * Tauri Detection Utilities
  * =========================
  * Detects whether the app is running in Tauri environment.
+ * Caches result after first positive detection (WebView2 bridge is persistent once injected).
  */
+
+let cachedResult: boolean | null = null;
 
 /**
  * Check if running in Tauri environment.
- * This is a function (not a const) so it re-evaluates every call.
+ * Re-evaluates until Tauri bridge is detected, then caches the result.
  * WebView2 may inject the __TAURI__ bridge asynchronously after module load.
  */
-// Legacy: export const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window;
+  if (cachedResult === true) return true;
+  const result = typeof window !== 'undefined' && '__TAURI__' in window;
+  if (result) cachedResult = true;
+  return result;
 }

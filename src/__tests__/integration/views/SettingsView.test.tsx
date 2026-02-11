@@ -137,7 +137,7 @@ describe('SettingsView', () => {
       renderWithProviders(<SettingsView />, 'en');
       // Dark theme should be selected by default
       const darkButton = screen.getByText(/dark/i).closest('button');
-      expect(darkButton?.className).toContain('bg-matrix-accent');
+      expect(darkButton?.className).toContain('bg-white');
     });
   });
 

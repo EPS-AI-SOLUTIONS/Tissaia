@@ -7,23 +7,23 @@
    TAILWIND THEME CONFIGURATION
    ============================================ */
 @theme {
-  --color-matrix-bg-primary: #0a1f0a;
-  --color-matrix-bg-secondary: #001a00;
-  --color-matrix-bg-tertiary: #0d2a0d;
-  --color-matrix-accent: #00ff41;
-  --color-matrix-accent-dim: #00cc33;
-  --color-matrix-accent-glow: #33ff66;
-  --color-matrix-text: #c0ffc0;
-  --color-matrix-text-dim: #80c080;
-  --color-matrix-border: #1a3a1a;
-  --color-matrix-glass: rgba(10, 31, 10, 0.8);
+  --color-matrix-bg-primary: #0f1419;
+  --color-matrix-bg-secondary: #0a0e13;
+  --color-matrix-bg-tertiary: #141a21;
+  --color-matrix-accent: #ffffff;
+  --color-matrix-accent-dim: #d1d5db;
+  --color-matrix-accent-glow: #e5e7eb;
+  --color-matrix-text: #e5e7eb;
+  --color-matrix-text-dim: #9ca3af;
+  --color-matrix-border: #1e2a35;
+  --color-matrix-glass: rgba(15, 20, 25, 0.8);
   --color-matrix-glass-light: rgba(255, 255, 255, 0.05);
 
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  --shadow-matrix-glow: 0 0 20px rgba(0, 255, 65, 0.3);
-  --shadow-matrix-glow-sm: 0 0 10px rgba(0, 255, 65, 0.2);
+  --shadow-matrix-glow: 0 0 20px rgba(255, 255, 255, 0.15);
+  --shadow-matrix-glow-sm: 0 0 10px rgba(255, 255, 255, 0.1);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -31,10 +31,10 @@
    ROOT VARIABLES
    ============================================ */
 :root {
-  --matrix-bg-primary: #0a1f0a;
-  --matrix-bg-secondary: #001a00;
-  --matrix-accent: #00ff41;
-  --matrix-glass-bg: rgba(0, 31, 0, 0.7);
+  --matrix-bg-primary: #0f1419;
+  --matrix-bg-secondary: #0a0e13;
+  --matrix-accent: #ffffff;
+  --matrix-glass-bg: rgba(15, 20, 25, 0.7);
 
   /* LIGHT MODE (The White Wolf) */
   --glass-light-bg: rgba(255, 255, 255, 0.4);
@@ -65,7 +65,7 @@ html {
 body {
   margin: 0;
   background: transparent;
-  color: #f0f5f0;
+  color: #ffffff;
   font-family: 'JetBrains Mono', monospace;
   overflow: hidden;
   height: 100%;
@@ -90,14 +90,14 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(0, 255, 65, 0.4), rgba(0, 200, 50, 0.2));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.15));
   border-radius: 10px;
   transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(0, 255, 65, 0.7), rgba(0, 200, 50, 0.5));
-  box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3));
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 ::-webkit-scrollbar-corner {
@@ -106,7 +106,7 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 255, 65, 0.4) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 /* ============================================
@@ -165,17 +165,17 @@ body {
 
 /* Glass Button */
 .glass-button {
-  background: rgba(0, 255, 65, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 255, 65, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.2s ease;
 }
 
 .glass-button:hover {
-  background: rgba(0, 255, 65, 0.2);
-  border-color: rgba(0, 255, 65, 0.5);
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================
@@ -184,12 +184,12 @@ body {
 
 /* Text Glow */
 .text-glow {
-  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
 }
 
 /* Matrix Rain Background */
 .matrix-rain-bg {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ctext fill='%2300ff4120' font-family='monospace' font-size='10'%3E%3Ctspan x='10' y='20'%3E01%3C/tspan%3E%3Ctspan x='30' y='40'%3E10%3C/tspan%3E%3Ctspan x='50' y='60'%3E11%3C/tspan%3E%3Ctspan x='70' y='80'%3E00%3C/tspan%3E%3C/text%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ctext fill='%23ffffff15' font-family='monospace' font-size='10'%3E%3Ctspan x='10' y='20'%3E01%3C/tspan%3E%3Ctspan x='30' y='40'%3E10%3C/tspan%3E%3Ctspan x='50' y='60'%3E11%3C/tspan%3E%3Ctspan x='70' y='80'%3E00%3C/tspan%3E%3C/text%3E%3C/svg%3E");
   background-size: 100px 100px;
 }
 
@@ -209,7 +209,7 @@ body {
 }
 
 .scrollbar-thumb-matrix-accent\/20::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 65, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
 }
 
@@ -256,8 +256,8 @@ body {
 
 .dropzone:hover,
 .dropzone.active {
-  border-color: #00ff41;
-  background: rgba(0, 255, 65, 0.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .dropzone.active {
@@ -280,7 +280,7 @@ body {
 
 :root.light body {
   background: linear-gradient(135deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
-  color: var(--matrix-text-primary);
+  color: #1a1a1a;
 }
 
 :root.light html {

@@ -24,17 +24,17 @@ export default function ProgressBar({
     <div className="space-y-2">
       {/* Message */}
       {message && (
-        <div className="flex items-center gap-2 text-sm text-matrix-text">
+        <div className="flex items-center gap-2 text-sm text-white/80">
           <motion.span
             animate={{ opacity: [1, 0.5, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-matrix-accent"
+            className="text-white"
           >
             ▶
           </motion.span>
           <span className="font-mono">{message}</span>
           {showPercentage && !isIndeterminate && progress !== undefined && (
-            <span className="ml-auto text-matrix-accent">{Math.round(progress)}%</span>
+            <span className="ml-auto text-white">{Math.round(progress)}%</span>
           )}
         </div>
       )}
@@ -43,7 +43,7 @@ export default function ProgressBar({
       <div className="progress-matrix relative overflow-hidden">
         {isIndeterminate ? (
           <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-matrix-accent to-transparent"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
             animate={{ x: ['-100%', '100%'] }}
             transition={{
               duration: 1.5,

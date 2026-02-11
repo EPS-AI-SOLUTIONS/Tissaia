@@ -48,6 +48,12 @@ pub fn run() {
             commands::save_settings,
             commands::detect_photos,
             commands::crop_photos,
+            commands::rotate_image,
+            commands::save_image,
+            commands::upscale_image,
+            // Local image processing
+            commands::apply_local_filters,
+            commands::extract_metadata,
             // Verification Agent (Gemini 3 Flash)
             commands::verify_restoration,
             commands::verify_detection,

@@ -84,7 +84,7 @@ export default function RestoreView() {
 
   if (!currentPhoto) {
     return (
-      <div className="p-6 text-center text-matrix-text-dim">
+      <div className="p-6 text-center text-white/50">
         <p>Brak zdjęcia do restauracji</p>
         <button type="button" onClick={() => setCurrentView('upload')} className="btn-glow mt-4">
           Wgraj zdjęcie
@@ -98,11 +98,11 @@ export default function RestoreView() {
       {/* Title */}
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-matrix-accent flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
             <Sparkles size={28} />
             {t('restore.title')}
           </h2>
-          <p className="text-matrix-text-dim mt-1">Gotowy do restauracji: {currentPhoto.name}</p>
+          <p className="text-white/50 mt-1">Gotowy do restauracji: {currentPhoto.name}</p>
         </div>
         <ModelSelector />
       </div>
@@ -113,9 +113,9 @@ export default function RestoreView() {
           <div className="space-y-6">
             <ProgressBar message={t('progress.restoring')} />
             <div className="glass-panel p-6 text-center">
-              <Sparkles size={48} className="mx-auto mb-4 text-matrix-accent animate-pulse" />
-              <p className="text-matrix-text-dim">AI pracuje nad Twoim zdjęciem...</p>
-              <p className="text-sm text-matrix-text-dim mt-2">To może potrwać kilka sekund</p>
+              <Sparkles size={48} className="mx-auto mb-4 text-white animate-pulse" />
+              <p className="text-white/50">AI pracuje nad Twoim zdjęciem...</p>
+              <p className="text-sm text-white/50 mt-2">To może potrwać kilka sekund</p>
             </div>
           </div>
         ) : (
@@ -132,7 +132,7 @@ export default function RestoreView() {
               <div className="flex-1 space-y-4">
                 <h3 className="font-semibold text-lg">{currentPhoto.name}</h3>
 
-                <div className="p-4 rounded-lg bg-matrix-accent/10 border border-matrix-accent/30">
+                <div className="p-4 rounded-lg bg-white/10 border border-white/20">
                   <p className="text-sm">
                     AI automatycznie wykryje uszkodzenia i zastosuje najlepsze techniki restauracji.
                   </p>

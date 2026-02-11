@@ -42,9 +42,9 @@ export interface VerificationBadgeProps {
 const statusConfig = {
   pass: {
     icon: CheckCircle,
-    color: 'text-green-400',
-    bg: 'bg-green-500/10',
-    border: 'border-green-500/30',
+    color: 'text-white',
+    bg: 'bg-white/10',
+    border: 'border-white/20',
     label: 'Zweryfikowano',
   },
   warning: {
@@ -160,7 +160,7 @@ export default function VerificationBadge({
                   {result.checks.map((check) => (
                     <div key={check.name} className="flex items-center gap-2 text-xs">
                       {check.passed ? (
-                        <CheckCircle size={12} className="text-green-400 flex-shrink-0" />
+                        <CheckCircle size={12} className="text-white flex-shrink-0" />
                       ) : (
                         <XCircle size={12} className="text-red-400 flex-shrink-0" />
                       )}
@@ -208,7 +208,7 @@ export default function VerificationBadge({
                   <ul className="space-y-0.5">
                     {result.recommendations.map((rec) => (
                       <li key={rec} className="text-xs text-matrix-text-dim flex items-start gap-1">
-                        <span className="text-matrix-accent">•</span>
+                        <span className="text-white">•</span>
                         {rec}
                       </li>
                     ))}

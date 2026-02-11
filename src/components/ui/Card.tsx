@@ -19,12 +19,12 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-matrix-bg-secondary border border-matrix-border',
+        default: 'bg-white/5 border border-white/10',
         glass: 'glass-panel',
-        elevated: 'bg-matrix-bg-secondary border border-matrix-border shadow-lg',
-        outline: 'bg-transparent border border-matrix-border',
-        accent: 'bg-matrix-accent/10 border border-matrix-accent/30',
-        success: 'bg-green-500/10 border border-green-500/30',
+        elevated: 'bg-white/5 border border-white/10 shadow-lg',
+        outline: 'bg-transparent border border-white/10',
+        accent: 'bg-white/10 border border-white/20',
+        success: 'bg-white/10 border border-white/20',
         warning: 'bg-yellow-500/10 border border-yellow-500/30',
         error: 'bg-red-500/10 border border-red-500/30',
       },
@@ -38,8 +38,8 @@ const cardVariants = cva(
       hover: {
         none: '',
         lift: 'hover:shadow-lg hover:-translate-y-0.5',
-        glow: 'hover:border-matrix-accent/50 hover:shadow-[0_0_20px_rgba(0,255,136,0.1)]',
-        highlight: 'hover:bg-matrix-accent/5',
+        glow: 'hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]',
+        highlight: 'hover:bg-white/5',
       },
     },
     defaultVariants: {
@@ -110,7 +110,7 @@ export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement>
 export function CardTitle({ className, children, icon, ...props }: CardTitleProps) {
   return (
     <h3 className={cn('text-lg font-semibold flex items-center gap-2', className)} {...props}>
-      {icon && <span className="text-matrix-accent">{icon}</span>}
+      {icon && <span className="text-white">{icon}</span>}
       {children}
     </h3>
   );

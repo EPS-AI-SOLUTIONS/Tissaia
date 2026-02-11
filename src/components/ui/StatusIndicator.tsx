@@ -21,12 +21,12 @@ const indicatorVariants = cva(
   {
     variants: {
       status: {
-        online: 'text-green-400',
+        online: 'text-white',
         offline: 'text-red-400',
         warning: 'text-yellow-400',
         loading: 'text-blue-400',
-        idle: 'text-matrix-text-dim',
-        success: 'text-green-400',
+        idle: 'text-white/50',
+        success: 'text-white',
         error: 'text-red-400',
       },
       size: {
@@ -48,12 +48,12 @@ const dotVariants = cva(
   {
     variants: {
       status: {
-        online: 'bg-green-400',
+        online: 'bg-white',
         offline: 'bg-red-400',
         warning: 'bg-yellow-400',
         loading: 'bg-blue-400',
         idle: 'bg-matrix-text-dim',
-        success: 'bg-green-400',
+        success: 'bg-white',
         error: 'bg-red-400',
       },
       size: {

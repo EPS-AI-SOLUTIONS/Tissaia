@@ -66,20 +66,48 @@ function cropRegion(
   px = Math.round(px);
   py = Math.round(py);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = pw;
-  canvas.height = ph;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
+  // First crop the region
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = pw;
+  cropCanvas.height = ph;
+  const cropCtx = cropCanvas.getContext('2d');
+  if (!cropCtx) {
     throw new Error('Failed to get canvas 2d context');
   }
-  ctx.drawImage(img, px, py, pw, ph, 0, 0, pw, ph);
+  cropCtx.drawImage(img, px, py, pw, ph, 0, 0, pw, ph);
 
-  return {
-    dataUrl: canvas.toDataURL('image/png'),
-    width: pw,
-    height: ph,
-  };
+  // Apply rotation CORRECTION.
+  // rotation_angle = current CW rotation from upright, so correction = (360 - angle).
+  // 90° detected (heads right) → correct with 270° CW (= 90° CCW)
+  // 180° detected (upside down) → correct with 180°
+  // 270° detected (heads left) → correct with 90° CW
+  const rotation = box.rotation_angle ?? 0;
+  const normalizedRotation = (((Math.round(rotation / 90) * 90) % 360) + 360) % 360;
+
+  if (normalizedRotation === 0) {
+    return { dataUrl: cropCanvas.toDataURL('image/png'), width: pw, height: ph };
+  }
+
+  // Invert: correction = (360 - detected) to undo the rotation
+  const correctionAngle = (360 - normalizedRotation) % 360;
+
+  const swap = correctionAngle === 90 || correctionAngle === 270;
+  const outW = swap ? ph : pw;
+  const outH = swap ? pw : ph;
+
+  const rotCanvas = document.createElement('canvas');
+  rotCanvas.width = outW;
+  rotCanvas.height = outH;
+  const rotCtx = rotCanvas.getContext('2d');
+  if (!rotCtx) {
+    throw new Error('Failed to get canvas 2d context');
+  }
+
+  rotCtx.translate(outW / 2, outH / 2);
+  rotCtx.rotate((correctionAngle * Math.PI) / 180);
+  rotCtx.drawImage(cropCanvas, -pw / 2, -ph / 2);
+
+  return { dataUrl: rotCanvas.toDataURL('image/png'), width: outW, height: outH };
 }
 
 /**
@@ -99,6 +127,8 @@ export interface DetectPhotosParams {
 
 export function useDetectPhotos() {
   return useMutation({
+    retry: 1,
+    retryDelay: 2000,
     mutationFn: async ({ file }: DetectPhotosParams): Promise<DetectionResult> => {
       if (!isTauri()) {
         await delay(MOCK_DETECTION_DELAY);
@@ -130,6 +160,8 @@ export interface CropPhotosParams {
 
 export function useCropPhotos() {
   return useMutation({
+    retry: 1,
+    retryDelay: 2000,
     mutationFn: async ({
       file,
       boundingBoxes,

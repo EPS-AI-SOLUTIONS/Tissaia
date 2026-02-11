@@ -51,70 +51,70 @@ describe('useViewTheme', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.header).toContain('bg-black/30');
       expect(result.current.headerTitle).toContain('text-white');
-      expect(result.current.headerIcon).toContain('text-matrix-accent');
+      expect(result.current.headerIcon).toContain('text-white');
     });
 
     it('returns dark typography styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.title).toBe('text-white');
-      expect(result.current.text).toContain('text-slate-200');
-      expect(result.current.textMuted).toContain('text-slate-400');
-      expect(result.current.textAccent).toContain('text-matrix-accent');
+      expect(result.current.text).toContain('text-white');
+      expect(result.current.textMuted).toContain('text-white/50');
+      expect(result.current.textAccent).toContain('text-white');
     });
 
     it('returns dark button styles', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.btnPrimary).toContain('text-matrix-accent');
-      expect(result.current.btnSecondary).toContain('text-slate-300');
+      expect(result.current.btnPrimary).toContain('text-white');
+      expect(result.current.btnSecondary).toContain('text-white/80');
       expect(result.current.btnDanger).toContain('text-red-400');
-      expect(result.current.btnGhost).toContain('text-slate-400');
+      expect(result.current.btnGhost).toContain('text-white/50');
     });
 
     it('returns dark input styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.input).toContain('bg-black/30');
-      expect(result.current.input).toContain('text-slate-200');
-      expect(result.current.inputIcon).toContain('text-slate-500');
+      expect(result.current.input).toContain('text-white');
+      expect(result.current.inputIcon).toContain('text-white/40');
     });
 
     it('returns dark card styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.card).toContain('bg-black/40');
-      expect(result.current.cardHover).toContain('hover:border-matrix-accent/30');
+      expect(result.current.cardHover).toContain('hover:border-white/20');
       expect(result.current.listItem).toContain('bg-black/30');
     });
 
     it('returns dark badge styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.badge).toContain('bg-white/5');
-      expect(result.current.badgeAccent).toContain('bg-matrix-accent/10');
+      expect(result.current.badgeAccent).toContain('bg-white/10');
     });
 
     it('returns dark accent colors', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.accentBg).toContain('bg-matrix-accent/10');
-      expect(result.current.accentText).toContain('text-matrix-accent');
-      expect(result.current.accentBorder).toContain('border-matrix-accent/30');
+      expect(result.current.accentBg).toContain('bg-white/10');
+      expect(result.current.accentText).toContain('text-white');
+      expect(result.current.accentBorder).toContain('border-white/20');
     });
 
     it('returns dark icon colors', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.iconDefault).toContain('text-slate-300');
-      expect(result.current.iconAccent).toContain('text-matrix-accent');
-      expect(result.current.iconMuted).toContain('text-slate-500');
+      expect(result.current.iconDefault).toContain('text-white/70');
+      expect(result.current.iconAccent).toContain('text-white');
+      expect(result.current.iconMuted).toContain('text-white/40');
     });
 
     it('returns dark special states', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.empty).toContain('text-slate-500');
-      expect(result.current.loading).toContain('text-matrix-accent');
+      expect(result.current.empty).toContain('text-white/30');
+      expect(result.current.loading).toContain('text-white');
       expect(result.current.error).toContain('text-red-400');
     });
 
     it('returns dark dropdown styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.dropdown).toContain('bg-black/95');
-      expect(result.current.dropdownItem).toContain('text-slate-300');
+      expect(result.current.dropdownItem).toContain('text-white/80');
     });
   });
 
@@ -148,31 +148,31 @@ describe('useViewTheme', () => {
     it('returns light header styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.header).toContain('bg-white/30');
-      expect(result.current.headerTitle).toContain('text-slate-800');
+      expect(result.current.headerTitle).toContain('text-black');
       expect(result.current.headerIcon).toContain('text-emerald-600');
     });
 
     it('returns light typography styles', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.title).toBe('text-slate-800');
-      expect(result.current.text).toContain('text-slate-700');
-      expect(result.current.textMuted).toContain('text-slate-500');
+      expect(result.current.title).toBe('text-black');
+      expect(result.current.text).toContain('text-black');
+      expect(result.current.textMuted).toContain('text-gray-500');
       expect(result.current.textAccent).toContain('text-emerald-600');
     });
 
     it('returns light button styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.btnPrimary).toContain('text-emerald-700');
-      expect(result.current.btnSecondary).toContain('text-slate-600');
+      expect(result.current.btnSecondary).toContain('text-gray-700');
       expect(result.current.btnDanger).toContain('text-red-600');
-      expect(result.current.btnGhost).toContain('text-slate-600');
+      expect(result.current.btnGhost).toContain('text-gray-700');
     });
 
     it('returns light input styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.input).toContain('bg-white/50');
-      expect(result.current.input).toContain('text-slate-800');
-      expect(result.current.inputIcon).toContain('text-slate-400');
+      expect(result.current.input).toContain('text-black');
+      expect(result.current.inputIcon).toContain('text-gray-400');
     });
 
     it('returns light card styles', () => {
@@ -190,7 +190,7 @@ describe('useViewTheme', () => {
 
     it('returns light special states', () => {
       const { result } = renderHook(() => useViewTheme());
-      expect(result.current.empty).toContain('text-slate-400');
+      expect(result.current.empty).toContain('text-gray-400');
       expect(result.current.loading).toContain('text-emerald-600');
       expect(result.current.error).toContain('text-red-600');
     });
@@ -198,7 +198,7 @@ describe('useViewTheme', () => {
     it('returns light dropdown styles', () => {
       const { result } = renderHook(() => useViewTheme());
       expect(result.current.dropdown).toContain('bg-white/95');
-      expect(result.current.dropdownItem).toContain('text-slate-700');
+      expect(result.current.dropdownItem).toContain('text-black');
     });
   });
 

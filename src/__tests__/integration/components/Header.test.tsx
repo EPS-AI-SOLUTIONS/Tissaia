@@ -220,6 +220,7 @@ describe('Header', () => {
 
         const expectedLabels: Record<string, string> = {
           upload: 'Upload',
+          crop: 'Crop',
           analyze: 'Analyze',
           restore: 'Restore',
           results: 'Results',

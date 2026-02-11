@@ -18,7 +18,7 @@ impl AppState {
         let providers = Self::init_providers(&api_keys);
 
         let client = Client::builder()
-            .timeout(Duration::from_secs(30))
+            .timeout(Duration::from_secs(120))
             .connect_timeout(Duration::from_secs(5))
             .build()
             .unwrap_or_default();

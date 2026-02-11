@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
+import { useViewTheme } from '../hooks/useViewTheme';
 import { useJobStore } from '../store/useJobStore';
 import { useViewStore } from '../store/useViewStore';
 import type { View } from '../types';
@@ -43,12 +44,12 @@ type NavGroup = {
 // ============================================
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  completed: 'bg-green-500/20 text-green-400',
+  completed: 'bg-white/15 text-white/80',
   failed: 'bg-red-500/20 text-red-400',
 };
 
 const getStatusBadgeClass = (status: string): string =>
-  STATUS_BADGE_CLASSES[status] ?? 'bg-matrix-accent/20 text-matrix-accent';
+  STATUS_BADGE_CLASSES[status] ?? 'bg-white/10 text-white/70';
 
 const THEME_LABELS: Record<string, Record<string, string>> = {
   dark: { pl: 'TRYB CIEMNY', en: 'DARK MODE' },
@@ -59,7 +60,7 @@ const getThemeLabel = (theme: string, lang: string): string =>
   THEME_LABELS[theme]?.[lang] ?? THEME_LABELS[theme]?.en ?? 'DARK MODE';
 
 const LOGO_CONFIG = {
-  dark: { src: '/logodark.webp', filter: 'drop-shadow(0 0 20px rgba(0,255,65,0.6))' },
+  dark: { src: '/logodark.webp', filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.3))' },
   light: { src: '/logolight.webp', filter: 'drop-shadow(0 0 20px rgba(45,106,79,0.5))' },
 } as const;
 
@@ -73,6 +74,8 @@ export default function Sidebar() {
   const setCurrentView = useViewStore((s) => s.setCurrentView);
   const currentJob = useJobStore((s) => s.currentJob);
   const { resolvedTheme, toggleTheme } = useTheme();
+  const theme = useViewTheme();
+  const isLight = theme.isLight;
 
   // Collapsed state
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -82,7 +85,6 @@ export default function Sidebar() {
       return false;
     }
   });
-
   useEffect(() => {
     try {
       localStorage.setItem('tissaia_sidebar_collapsed', String(isCollapsed));
@@ -90,6 +92,10 @@ export default function Sidebar() {
       /* ignore */
     }
   }, [isCollapsed]);
+
+  const handleToggleCollapse = () => {
+    setIsCollapsed((prev) => !prev);
+  };
 
   // Language dropdown state
   const [showLangDropdown, setShowLangDropdown] = useState(false);
@@ -174,35 +180,58 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`${isCollapsed ? 'w-20' : 'w-64'} h-full flex flex-col z-20 transition-all duration-300 relative p-2 gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-matrix-accent/20`}
+      className={`${isCollapsed ? 'w-20' : 'w-64'} h-full flex flex-col z-20 transition-all duration-300 relative p-2 gap-2 overflow-y-auto overflow-x-hidden scrollbar-hide`}
     >
-      {/* Collapse Toggle Button */}
-      <button
-        type="button"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-20 z-30 hidden md:flex items-center justify-center w-6 h-6 bg-black/40 border border-matrix-accent/30 rounded-full hover:bg-matrix-accent/20 hover:border-matrix-accent/50 transition-all"
-        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {isCollapsed ? (
-          <ChevronRight size={14} className="text-matrix-accent" />
-        ) : (
-          <ChevronLeft size={14} className="text-matrix-accent" />
-        )}
-      </button>
+      {/* Logo + Collapse Toggle */}
+      <div className="flex items-center justify-between flex-shrink-0 py-4 px-1">
+        {/* Logo */}
+        <div className={`flex items-center justify-center ${isCollapsed ? 'w-full' : 'flex-1'}`}>
+          <img
+            src={
+              LOGO_CONFIG[resolvedTheme as keyof typeof LOGO_CONFIG]?.src ?? LOGO_CONFIG.dark.src
+            }
+            alt="TISSAIA"
+            className={`${isCollapsed ? 'w-12 h-12' : 'w-40 h-auto'} object-contain transition-all duration-300`}
+            style={{
+              filter:
+                LOGO_CONFIG[resolvedTheme as keyof typeof LOGO_CONFIG]?.filter ??
+                LOGO_CONFIG.dark.filter,
+            }}
+          />
+        </div>
 
-      {/* Logo */}
-      <div className="flex items-center justify-center py-6 flex-shrink-0">
-        <img
-          src={LOGO_CONFIG[resolvedTheme as keyof typeof LOGO_CONFIG]?.src ?? LOGO_CONFIG.dark.src}
-          alt="TISSAIA"
-          className={`${isCollapsed ? 'w-16 h-16' : 'w-48 h-auto'} object-contain transition-all duration-300`}
-          style={{
-            filter:
-              LOGO_CONFIG[resolvedTheme as keyof typeof LOGO_CONFIG]?.filter ??
-              LOGO_CONFIG.dark.filter,
-          }}
-        />
+        {/* Collapse Toggle Button */}
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all flex-shrink-0 ${
+              isLight
+                ? 'hover:bg-black/5 text-slate-400 hover:text-emerald-600'
+                : 'hover:bg-white/10 text-white/40 hover:text-white'
+            }`}
+            title="Collapse sidebar"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
       </div>
+
+      {/* Expand button when collapsed */}
+      {isCollapsed && (
+        <button
+          type="button"
+          onClick={handleToggleCollapse}
+          className={`flex items-center justify-center w-full py-2 rounded-lg transition-all flex-shrink-0 ${
+            isLight
+              ? 'hover:bg-black/5 text-slate-400 hover:text-emerald-600'
+              : 'hover:bg-white/10 text-white/40 hover:text-white'
+          }`}
+          title="Expand sidebar"
+        >
+          <ChevronRight size={18} />
+        </button>
+      )}
 
       {/* Grouped Navigation */}
       <nav className="flex flex-col gap-2 flex-shrink-0">
@@ -220,8 +249,8 @@ export default function Sidebar() {
                   onClick={() => toggleGroup(group.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 transition-all group ${
                     hasActiveItem
-                      ? 'text-matrix-accent bg-matrix-accent/5'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      ? `${isLight ? 'text-emerald-600 bg-emerald-500/5' : 'text-white bg-white/5'}`
+                      : `${theme.textMuted} ${isLight ? 'hover:text-black hover:bg-black/5' : 'hover:text-white hover:bg-white/5'}`
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -250,14 +279,14 @@ export default function Sidebar() {
                     onClick={() => setCurrentView(item.id)}
                     className={`relative w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2 rounded-lg transition-all duration-200 group ${
                       currentView === item.id
-                        ? 'bg-matrix-accent/15 text-matrix-accent'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        ? `${isLight ? 'bg-emerald-500/15 text-emerald-600' : 'bg-white/10 text-white'}`
+                        : `${theme.textMuted} ${isLight ? 'hover:bg-black/5 hover:text-black' : 'hover:bg-white/5 hover:text-white'}`
                     }`}
                     title={isCollapsed ? item.label : undefined}
                   >
                     <item.icon
                       size={16}
-                      className={`${currentView === item.id ? 'text-matrix-accent' : 'text-slate-500 group-hover:text-white'} transition-colors flex-shrink-0`}
+                      className={`${currentView === item.id ? (isLight ? 'text-emerald-600' : 'text-white') : `${theme.iconMuted} ${isLight ? 'group-hover:text-black' : 'group-hover:text-white'}`} transition-colors flex-shrink-0`}
                     />
                     {!isCollapsed && (
                       <span className="font-medium text-xs tracking-wide truncate">
@@ -265,7 +294,9 @@ export default function Sidebar() {
                       </span>
                     )}
                     {currentView === item.id && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-matrix-accent rounded-r-full shadow-[0_0_8px_#00ff41]" />
+                      <div
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full ${isLight ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)]'}`}
+                      />
                     )}
                   </button>
                 ))}
@@ -279,7 +310,7 @@ export default function Sidebar() {
       {currentJob && !isCollapsed && (
         <div className={`${glassPanel} p-3`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-slate-400">Bieżące zadanie</span>
+            <span className={`text-xs ${theme.textMuted}`}>Bieżące zadanie</span>
             <span
               className={`
               text-xs px-2 py-0.5 rounded-full
@@ -289,7 +320,7 @@ export default function Sidebar() {
               {currentJob.status}
             </span>
           </div>
-          <div className="text-sm truncate text-slate-300">{currentJob.photo.name}</div>
+          <div className={`text-sm truncate ${theme.text}`}>{currentJob.photo.name}</div>
           {currentJob.status !== 'completed' && currentJob.status !== 'failed' && (
             <div className="mt-2 progress-matrix">
               <div className="progress-matrix-bar" style={{ width: `${currentJob.progress}%` }} />
@@ -307,14 +338,14 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={toggleTheme}
-          className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} gap-3 w-full p-2 rounded-lg hover:bg-white/5 transition-all group`}
+          className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} gap-3 w-full p-2 rounded-lg ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'} transition-all group`}
           title={isCollapsed ? `Theme: ${resolvedTheme === 'dark' ? 'Dark' : 'Light'}` : undefined}
         >
           <div className="relative">
             {resolvedTheme === 'dark' ? (
               <Moon
                 size={18}
-                className="text-slate-500 group-hover:text-matrix-accent transition-colors"
+                className={`${theme.iconMuted} group-hover:text-white transition-colors`}
               />
             ) : (
               <Sun
@@ -324,7 +355,9 @@ export default function Sidebar() {
             )}
           </div>
           {!isCollapsed && (
-            <span className="text-xs font-mono text-slate-400 group-hover:text-white truncate">
+            <span
+              className={`text-xs font-mono ${theme.textMuted} ${isLight ? 'group-hover:text-black' : 'group-hover:text-white'} truncate`}
+            >
               {getThemeLabel(resolvedTheme, i18n.language)}
             </span>
           )}
@@ -335,20 +368,22 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={() => setShowLangDropdown(!showLangDropdown)}
-            className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3 w-full p-2 rounded-lg hover:bg-white/5 transition-all group`}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} gap-3 w-full p-2 rounded-lg ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'} transition-all group`}
             title={isCollapsed ? `Language: ${currentLang.name}` : undefined}
           >
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Globe
                   size={18}
-                  className="text-slate-500 group-hover:text-matrix-accent transition-colors"
+                  className={`${theme.iconMuted} ${isLight ? 'group-hover:text-emerald-600' : 'group-hover:text-white'} transition-colors`}
                 />
               </div>
               {!isCollapsed && (
-                <span className="text-xs font-mono text-slate-400 group-hover:text-white truncate">
+                <span
+                  className={`text-xs font-mono ${theme.textMuted} ${isLight ? 'group-hover:text-black' : 'group-hover:text-white'} truncate`}
+                >
                   <span className="mr-1.5">{currentLang.flag}</span>
-                  <span className="font-bold text-matrix-accent">
+                  <span className={`font-bold ${theme.textAccent}`}>
                     {currentLang.code.toUpperCase()}
                   </span>
                 </span>
@@ -357,14 +392,16 @@ export default function Sidebar() {
             {!isCollapsed && (
               <ChevronDown
                 size={14}
-                className={`text-slate-500 transition-transform duration-200 ${showLangDropdown ? 'rotate-180' : ''}`}
+                className={`${theme.iconMuted} transition-transform duration-200 ${showLangDropdown ? 'rotate-180' : ''}`}
               />
             )}
           </button>
 
           {/* Language Dropdown */}
           {showLangDropdown && (
-            <div className="absolute bottom-full left-0 right-0 mb-1 rounded-xl bg-black/90 backdrop-blur-xl border border-matrix-accent/20 shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-50">
+            <div
+              className={`absolute bottom-full left-0 right-0 mb-1 rounded-xl ${isLight ? 'bg-white/95 border-emerald-500/20 shadow-lg' : 'bg-black/90 border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.6)]'} backdrop-blur-xl border overflow-hidden z-50`}
+            >
               {languages.map((lang) => (
                 <button
                   key={lang.code}
@@ -372,14 +409,16 @@ export default function Sidebar() {
                   onClick={() => selectLanguage(lang.code)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-all ${
                     i18n.language === lang.code
-                      ? 'bg-matrix-accent/20 text-matrix-accent'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? `${isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/15 text-white'}`
+                      : `${theme.textMuted} ${isLight ? 'hover:bg-black/5 hover:text-black' : 'hover:bg-white/5 hover:text-white'}`
                   }`}
                 >
                   <span className="text-base">{lang.flag}</span>
                   <span className="font-mono">{lang.name}</span>
                   {i18n.language === lang.code && (
-                    <div className="ml-auto w-1.5 h-1.5 bg-matrix-accent rounded-full shadow-[0_0_6px_#00ff41]" />
+                    <div
+                      className={`ml-auto w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)]'}`}
+                    />
                   )}
                 </button>
               ))}
@@ -390,8 +429,8 @@ export default function Sidebar() {
 
       {/* Version */}
       {!isCollapsed && (
-        <div className="text-center text-[10px] text-slate-500 py-2">
-          <span className="text-matrix-accent">Tissaia</span> v3.0.0 | Gemini Vision
+        <div className={`text-center text-[10px] ${theme.textMuted} py-2`}>
+          <span className={theme.textAccent}>Tissaia</span> v3.0.0 | Gemini Vision
         </div>
       )}
     </div>

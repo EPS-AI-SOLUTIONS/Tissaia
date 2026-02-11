@@ -151,7 +151,7 @@ describe('Sidebar', () => {
       renderWithProviders(<Sidebar />, { locale: 'en' });
 
       const settingsButton = screen.getByRole('button', { name: /Settings/i });
-      expect(settingsButton.className).toContain('text-matrix-accent');
+      expect(settingsButton.className).toContain('text-white');
     });
   });
 

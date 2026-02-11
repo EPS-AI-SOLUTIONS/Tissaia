@@ -126,6 +126,9 @@ pub struct BoundingBox {
     pub height: u32,
     pub confidence: f32,
     pub label: Option<String>,
+    /// Rotation angle in degrees (clockwise). 0 = upright, 90 = rotated right, etc.
+    #[serde(default)]
+    pub rotation_angle: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

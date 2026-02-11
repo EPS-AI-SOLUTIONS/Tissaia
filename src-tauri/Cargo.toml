@@ -60,9 +60,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # Only enable needed formats to speed up compilation
 image = { version = "0.25", optional = true, default-features = false, features = ["jpeg", "png", "webp"] }
 
+# EXIF metadata parsing (for orientation auto-detection)
+kamadak-exif = { version = "0.5", optional = true }
+
 [features]
 default = ["image-processing"]
-image-processing = ["image"]
+image-processing = ["image", "kamadak-exif"]
 
 # Fast release profile (default) - balanced speed/optimization
 [profile.release]

@@ -39,7 +39,7 @@ export default function Skeleton({
         className={clsx(baseStyles, variantStyles[variant], className, 'relative overflow-hidden')}
       >
         <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-matrix-accent/10 to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
           animate={{ x: ['-100%', '100%'] }}
           transition={{
             duration: 1.5,

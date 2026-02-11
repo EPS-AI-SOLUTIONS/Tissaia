@@ -146,8 +146,8 @@ describe('HistoryView', () => {
 
     it('displays success icon for successful operations', () => {
       const { container } = renderWithProviders(<HistoryView />);
-      // Check for CheckCircle icon (green background)
-      expect(container.querySelector('.bg-green-500\\/10')).toBeInTheDocument();
+      // Check for CheckCircle icon (white background in dark theme)
+      expect(container.querySelector('.bg-white\\/10')).toBeInTheDocument();
     });
 
     it('displays error icon for failed operations', () => {

@@ -16,18 +16,17 @@ import { cn } from '../../utils';
 
 const buttonVariants = cva(
   // Base styles
-  'inline-flex items-center justify-center gap-2 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-matrix-accent focus-visible:ring-offset-2 focus-visible:ring-offset-matrix-bg-primary',
+  'inline-flex items-center justify-center gap-2 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
   {
     variants: {
       variant: {
         primary: 'btn-glow',
         secondary: 'btn-secondary',
-        ghost: 'bg-transparent hover:bg-matrix-accent/10 text-matrix-text',
-        outline:
-          'bg-transparent border border-matrix-border hover:border-matrix-accent/50 text-matrix-text',
+        ghost: 'bg-transparent hover:bg-white/10 text-white/80',
+        outline: 'bg-transparent border border-white/10 hover:border-white/30 text-white/80',
         danger: 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30',
-        success: 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30',
-        link: 'bg-transparent text-matrix-accent hover:underline p-0',
+        success: 'bg-white/10 text-white/80 border border-white/20 hover:bg-white/20',
+        link: 'bg-transparent text-white hover:underline p-0',
       },
       size: {
         xs: 'text-xs px-2 py-1 rounded',
