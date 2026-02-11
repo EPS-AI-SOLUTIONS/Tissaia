@@ -8,7 +8,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { isTauri } from '../../utils/tauri';
 import { MOCK_DETECTION_DELAY, mockDetectionResult } from './mocks';
-import type { BoundingBox, CroppedPhoto, CropResult, DetectionResult } from './types';
+import type { BoundingBox, CroppedPhoto, CropResult, DetectionResult, Point2D } from './types';
 import { delay, fileToBase64, safeInvoke } from './utils';
 
 // ============================================
@@ -125,6 +125,13 @@ export interface DetectPhotosParams {
   file: File;
 }
 
+/**
+ * Enhanced photo detection with auto-retry and verification merge.
+ * Uses `detect_photos_with_retry` which:
+ * 1. Runs initial detection
+ * 2. Verifies with Gemini Flash
+ * 3. If photos are missing, merges verifier suggestions
+ */
 export function useDetectPhotos() {
   return useMutation({
     retry: 1,
@@ -140,7 +147,7 @@ export function useDetectPhotos() {
       }
 
       const { base64, mimeType } = await fileToBase64(file);
-      return safeInvoke<DetectionResult>('detect_photos', {
+      return safeInvoke<DetectionResult>('detect_photos_with_retry', {
         imageBase64: base64,
         mimeType,
       });
@@ -200,6 +207,51 @@ export function useCropPhotos() {
         boundingBoxes,
         originalFilename,
       });
+    },
+  });
+}
+
+// ============================================
+// OUTPAINT PHOTO TO RECTANGLE
+// ============================================
+
+export interface OutpaintPhotoParams {
+  croppedBase64: string;
+  mimeType: string;
+  contour: Point2D[];
+  bboxWidth: number;
+  bboxHeight: number;
+}
+
+/**
+ * Apply generative outpainting to fill non-rectangular photo edges.
+ * Only needed when BoundingBox.needs_outpaint is true.
+ */
+export function useOutpaintPhoto() {
+  return useMutation({
+    retry: 0,
+    mutationFn: async ({
+      croppedBase64,
+      mimeType,
+      contour,
+      bboxWidth,
+      bboxHeight,
+    }: OutpaintPhotoParams): Promise<string> => {
+      if (!isTauri()) {
+        // In browser mode, just return original (no outpainting available)
+        return croppedBase64;
+      }
+
+      return safeInvoke<string>('outpaint_photo', {
+        croppedBase64,
+        mimeType,
+        contour,
+        bboxWidth,
+        bboxHeight,
+      });
+    },
+    onError: (error) => {
+      console.warn('[Outpaint] Outpainting failed, using original crop:', error);
     },
   });
 }

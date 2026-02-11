@@ -100,6 +100,8 @@ export const mockDetectionResult: DetectionResult = {
       confidence: 0.95,
       label: 'photo 1',
       rotation_angle: 0,
+      contour: [],
+      needs_outpaint: false,
     },
     {
       x: 530,
@@ -109,6 +111,8 @@ export const mockDetectionResult: DetectionResult = {
       confidence: 0.92,
       label: 'photo 2',
       rotation_angle: 0,
+      contour: [],
+      needs_outpaint: false,
     },
     {
       x: 30,
@@ -118,6 +122,8 @@ export const mockDetectionResult: DetectionResult = {
       confidence: 0.88,
       label: 'photo 3',
       rotation_angle: 0,
+      contour: [],
+      needs_outpaint: false,
     },
   ],
   provider_used: 'mock-provider',
@@ -162,6 +168,7 @@ export function createMockVerificationResult(stage: VerificationStage): Verifica
     recommendations: allPassed ? ['Result looks good'] : ['Review output manually'],
     processing_time_ms: 450 + Math.floor(Math.random() * 300),
     model_used: 'mock-gemini-3-flash',
+    missing_boxes: [],
   };
 }
 

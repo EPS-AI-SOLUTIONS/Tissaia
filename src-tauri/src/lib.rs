@@ -58,6 +58,9 @@ pub fn run() {
             commands::verify_restoration,
             commands::verify_detection,
             commands::verify_crop,
+            // Enhanced detection + outpainting
+            commands::detect_photos_with_retry,
+            commands::outpaint_photo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tissaia AI");

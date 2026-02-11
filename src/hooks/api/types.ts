@@ -27,7 +27,7 @@ export interface RestorationResult {
 // HISTORY TYPES
 // ============================================
 
-export type OperationType = 'restoration' | 'photoseparation' | 'verification';
+export type OperationType = 'restoration' | 'photoseparation' | 'verification' | 'analysis';
 
 export interface HistoryEntry {
   id: string;
@@ -96,6 +96,12 @@ export interface AppSettings {
 // PHOTO SEPARATION / CROP TYPES
 // ============================================
 
+/** A 2D point in normalized 0-1000 coordinate space. */
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
 export interface BoundingBox {
   x: number;
   y: number;
@@ -105,6 +111,11 @@ export interface BoundingBox {
   label: string | null;
   /** Rotation angle in degrees (clockwise) needed to make photo upright. 0 = already upright. */
   rotation_angle: number;
+  /** Precise polygon contour of the photo (normalized 0-1000 coordinates).
+   * Describes the actual photo shape which may not be rectangular. */
+  contour: Point2D[];
+  /** Whether this photo needs generative outpainting to fill non-rectangular edges. */
+  needs_outpaint: boolean;
 }
 
 export interface DetectionResult {
@@ -165,4 +176,6 @@ export interface VerificationResult {
   recommendations: string[];
   processing_time_ms: number;
   model_used: string;
+  /** Bounding boxes for photos the verifier detected as missing from the original detection. */
+  missing_boxes: BoundingBox[];
 }

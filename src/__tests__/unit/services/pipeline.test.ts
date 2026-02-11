@@ -25,7 +25,17 @@ vi.mock('../../../hooks/api/mocks', () => ({
     timestamp: '2026-01-01',
     photo_count: 1,
     bounding_boxes: [
-      { x: 0, y: 0, width: 500, height: 500, confidence: 0.95, label: 'photo', rotation_angle: 0 },
+      {
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 500,
+        confidence: 0.95,
+        label: 'photo',
+        rotation_angle: 0,
+        contour: [],
+        needs_outpaint: false,
+      },
     ],
     provider_used: 'mock',
     scan_width: 1000,

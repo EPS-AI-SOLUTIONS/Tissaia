@@ -118,6 +118,13 @@ pub struct AiModel {
 // PHOTO SEPARATION / CROP TYPES
 // ============================================
 
+/// A 2D point in normalized 0-1000 coordinate space.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Point2D {
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoundingBox {
     pub x: u32,
@@ -129,6 +136,15 @@ pub struct BoundingBox {
     /// Rotation angle in degrees (clockwise). 0 = upright, 90 = rotated right, etc.
     #[serde(default)]
     pub rotation_angle: f32,
+    /// Precise polygon contour of the photo (normalized 0-1000 coordinates).
+    /// If present, describes the actual photo shape (may not be rectangular).
+    /// The area between the polygon and the bounding box rectangle should be
+    /// filled generatively (outpainting).
+    #[serde(default)]
+    pub contour: Vec<Point2D>,
+    /// Whether this photo needs generative outpainting to fill non-rectangular edges.
+    #[serde(default)]
+    pub needs_outpaint: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,6 +224,9 @@ pub struct VerificationResult {
     pub recommendations: Vec<String>,
     pub processing_time_ms: u64,
     pub model_used: String,
+    /// Bounding boxes for photos that the verifier detected as missing from the original detection.
+    #[serde(default)]
+    pub missing_boxes: Vec<BoundingBox>,
 }
 
 impl VerificationResult {
@@ -223,6 +242,7 @@ impl VerificationResult {
             recommendations: Vec::new(),
             processing_time_ms: 0,
             model_used: "gemini-3-flash-preview".to_string(),
+            missing_boxes: Vec::new(),
         }
     }
 }

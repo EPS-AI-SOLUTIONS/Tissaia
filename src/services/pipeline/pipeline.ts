@@ -400,7 +400,7 @@ export class TissaiaPipeline {
 
     this.emitStageProgress('detection', 50, 'Analiza AI w toku...');
 
-    const result = await safeInvoke<DetectionResult>('detect_photos', {
+    const result = await safeInvoke<DetectionResult>('detect_photos_with_retry', {
       imageBase64: ingestion.base64,
       mimeType: ingestion.mimeType,
     });
@@ -416,6 +416,8 @@ export class TissaiaPipeline {
           confidence: 1.0,
           label: 'full scan',
           rotation_angle: 0,
+          contour: [],
+          needs_outpaint: false,
         },
       ];
       result.photo_count = 1;

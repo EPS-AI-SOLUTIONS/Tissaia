@@ -226,6 +226,8 @@ export default function CropView() {
             confidence: 1.0,
             label: 'full scan',
             rotation_angle: 0,
+            contour: [],
+            needs_outpaint: false,
           },
         ]);
       }
@@ -241,6 +243,8 @@ export default function CropView() {
           confidence: 1.0,
           label: 'full scan',
           rotation_angle: 0,
+          contour: [],
+          needs_outpaint: false,
         },
       ]);
     } finally {
@@ -300,6 +304,8 @@ export default function CropView() {
         confidence: 1.0,
         label: 'full image',
         rotation_angle: 0,
+        contour: [],
+        needs_outpaint: false,
       },
     ]);
   }, []);

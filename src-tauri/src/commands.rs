@@ -961,3 +961,127 @@ pub async fn verify_crop(
     info!("=== VERIFY_CROP {} END === (status: {:?})", crop_index, result.status);
     Ok(result)
 }
+
+// ============================================
+// ENHANCED DETECTION WITH AUTO-RETRY + MERGE
+// ============================================
+
+/// Detect photos with automatic retry: runs detection, then verification.
+/// If verification finds missing photos, either retries detection with feedback
+/// or merges the verifier's suggested boxes as a fallback.
+#[tauri::command]
+pub async fn detect_photos_with_retry(
+    state: State<'_, AppStateHandle>,
+    image_base64: String,
+    mime_type: String,
+) -> Result<DetectionResult, String> {
+    info!("=== DETECT_PHOTOS_WITH_RETRY START ===");
+
+    let (api_key, client, verification_enabled) = {
+        let state_guard = state.lock().await;
+        let key = state_guard.get_api_key("google")
+            .ok_or("Google API key required")?
+            .clone();
+        let client = state_guard.client().clone();
+        let enabled = state_guard.settings.verification_enabled;
+        (key, client, enabled)
+    };
+
+    let ai = AiProvider::with_client(client);
+
+    // Step 1: Initial detection
+    let mut result = ai.detect_photo_boundaries(&api_key, &image_base64, &mime_type)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    info!("Initial detection found {} photos", result.photo_count);
+
+    // Step 2: Verify if enabled
+    if !verification_enabled {
+        info!("Verification disabled, returning initial result");
+        return Ok(result);
+    }
+
+    let verification = ai.verify_detection(&api_key, &image_base64, &mime_type, &result.bounding_boxes)
+        .await;
+
+    let verification = match verification {
+        Ok(v) => v,
+        Err(e) => {
+            info!("Verification failed ({}), returning initial result", e);
+            return Ok(result);
+        }
+    };
+
+    info!("Verification status: {:?}, missing boxes: {}", verification.status, verification.missing_boxes.len());
+
+    // Step 3: If completeness check failed and we have missing boxes, merge them
+    let completeness_failed = verification.checks.iter()
+        .any(|c| c.name == "completeness" && !c.passed);
+
+    if completeness_failed && !verification.missing_boxes.is_empty() {
+        info!("Completeness check failed — merging {} missing boxes from verifier", verification.missing_boxes.len());
+
+        for (i, missing) in verification.missing_boxes.iter().enumerate() {
+            // Re-label the missing box
+            let mut merged_box = missing.clone();
+            merged_box.label = Some(format!("photo {}", result.bounding_boxes.len() + 1));
+            // Lower confidence since it came from verifier fallback
+            merged_box.confidence = merged_box.confidence.min(0.80);
+
+            info!("  Merging missing box {}: x={}, y={}, w={}, h={} (conf: {:.2})",
+                i + 1, merged_box.x, merged_box.y, merged_box.width, merged_box.height, merged_box.confidence);
+
+            result.bounding_boxes.push(merged_box);
+        }
+
+        result.photo_count = result.bounding_boxes.len();
+        info!("After merge: {} total photos", result.photo_count);
+    }
+
+    info!("=== DETECT_PHOTOS_WITH_RETRY END === (found {} photos)", result.photo_count);
+    Ok(result)
+}
+
+// ============================================
+// OUTPAINT PHOTO TO RECTANGLE
+// ============================================
+
+/// Apply generative outpainting to fill non-rectangular photo edges.
+/// Takes a cropped photo region and its polygon contour,
+/// returns a clean rectangular image with outpainted edges.
+#[tauri::command]
+pub async fn outpaint_photo(
+    state: State<'_, AppStateHandle>,
+    cropped_base64: String,
+    mime_type: String,
+    contour: Vec<crate::models::Point2D>,
+    bbox_width: u32,
+    bbox_height: u32,
+) -> Result<String, String> {
+    info!("=== OUTPAINT_PHOTO START ===");
+
+    if contour.len() < 3 {
+        info!("Contour has < 3 points, returning original image");
+        return Ok(cropped_base64);
+    }
+
+    let (api_key, client) = {
+        let state_guard = state.lock().await;
+        let key = state_guard.get_api_key("google")
+            .ok_or("Google API key required for outpainting")?
+            .clone();
+        let client = state_guard.client().clone();
+        (key, client)
+    };
+
+    let ai = AiProvider::with_client(client);
+    let result = ai.outpaint_to_rectangle(
+        &api_key, &cropped_base64, &mime_type, &contour, bbox_width, bbox_height,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    info!("=== OUTPAINT_PHOTO END ===");
+    Ok(result)
+}

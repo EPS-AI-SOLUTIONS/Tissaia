@@ -423,52 +423,83 @@ Return ONLY valid JSON."#;
 
         let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent";
 
-        let prompt = r#"This image is a flatbed scanner scan that may contain multiple separate photographs, documents, or images placed on the scanner bed.
+        let prompt = r#"You are a photo boundary detection expert. This image is a flatbed scanner scan containing MULTIPLE separate photographs placed on the scanner bed.
 
-Detect each individual photograph/document and return their bounding boxes.
-Use normalized coordinates 0-1000 where top-left corner = (0, 0) and bottom-right corner = (1000, 1000).
-Crop tightly to each photo's actual edges, excluding the scanner background/border.
-Order detected photos: left-to-right, then top-to-bottom.
+YOUR TASK: Find and outline EACH INDIVIDUAL photograph separately. Most scans contain 2-8 separate photos arranged in a grid pattern.
 
-IMPORTANT - ROTATION DETECTION:
-Carefully analyze the orientation of each photo by looking at:
-- People/faces: heads should be at the top, feet at the bottom
-- Text/writing: should read left-to-right, top-to-bottom
-- Buildings/trees: should be upright with sky at the top
-- Tables/furniture: should sit on the ground, not float
-Report "rotation_angle" as the CURRENT clockwise rotation of the photo FROM its upright position:
-- 0 = already upright (no correction needed)
-- 90 = photo is currently rotated 90° clockwise from upright (heads point to the right)
-- 180 = photo is upside down (heads point downward)
-- 270 = photo is currently rotated 270° clockwise from upright (heads point to the left)
-Only use values 0, 90, 180, or 270. Do NOT report small tilt angles.
+DETECTION STRATEGY — follow this step-by-step:
+STEP 1: Scan the ENTIRE image systematically in a grid pattern:
+  - Top-left quadrant → Top-right quadrant
+  - Middle-left → Middle-right
+  - Bottom-left → Bottom-right
+STEP 2: For EACH quadrant, check if there is a photo present.
+STEP 3: Pay EXTRA attention to corners and edges — photos near the scanner edges are often missed.
+STEP 4: Count all photos found and verify the count matches the number of bounding boxes.
 
-If only ONE photo fills the entire scan, return a single bounding box covering it.
+CRITICAL RULES:
+1. Look for GAPS and BORDERS between photos. Separate photos have visible edges, shadows, or scanner-bed background between them.
+2. Each photo is a DISTINCT rectangular image with its own content (different scene, different people, different time period).
+3. Do NOT merge multiple photos into one large bounding box. Each photo gets its OWN bounding box.
+4. If photos overlap slightly, still detect them as separate items.
+5. NEVER skip photos in corners or at edges of the scan. Systematically check ALL four corners and ALL four edges.
+6. Labels MUST start from "photo 1" and be sequential with NO gaps. The number of bounding_boxes MUST equal photo_count.
 
-Return ONLY valid JSON in this exact format:
+COORDINATE SYSTEM: Normalized 0-1000, where top-left = (0, 0) and bottom-right = (1000, 1000).
+Order: left-to-right, then top-to-bottom.
+
+BOUNDING BOX vs CONTOUR:
+- "x", "y", "width", "height" = axis-aligned bounding rectangle enclosing the photo.
+- "contour" = precise polygon outline of the photo's actual edges (list of [x, y] points, normalized 0-1000).
+  Photos on a scanner are often NOT perfect rectangles: they may be slightly tilted, have bent corners,
+  or irregular edges. The contour captures the TRUE shape.
+- "needs_outpaint" = true if the contour is significantly non-rectangular (the system will generatively fill the gap between contour and bounding box).
+  Set to false ONLY if the photo is a near-perfect axis-aligned rectangle (all corners within 5 units of the bbox corners).
+
+ROTATION DETECTION for each photo:
+- Look at people/faces (heads up), text (readable), buildings (upright)
+- "rotation_angle" = CURRENT clockwise rotation FROM upright:
+  0 = upright, 90 = heads point right, 180 = upside down, 270 = heads point left
+- Only use values 0, 90, 180, or 270.
+
+Return ONLY valid JSON:
 {
     "photo_count": 3,
     "bounding_boxes": [
-        {"x": 50, "y": 30, "width": 400, "height": 450, "confidence": 0.95, "label": "photo 1", "rotation_angle": 0},
-        {"x": 520, "y": 30, "width": 430, "height": 450, "confidence": 0.92, "label": "photo 2", "rotation_angle": 90},
-        {"x": 50, "y": 520, "width": 400, "height": 440, "confidence": 0.90, "label": "photo 3", "rotation_angle": 0}
+        {
+            "x": 30, "y": 20, "width": 450, "height": 300,
+            "confidence": 0.95, "label": "photo 1", "rotation_angle": 0,
+            "contour": [[32,22],[478,20],[480,318],[30,320]],
+            "needs_outpaint": false
+        },
+        {
+            "x": 520, "y": 20, "width": 450, "height": 300,
+            "confidence": 0.93, "label": "photo 2", "rotation_angle": 0,
+            "contour": [[525,25],[965,22],[968,315],[522,318]],
+            "needs_outpaint": true
+        },
+        {
+            "x": 30, "y": 340, "width": 450, "height": 300,
+            "confidence": 0.92, "label": "photo 3", "rotation_angle": 90,
+            "contour": [[35,345],[475,342],[478,638],[32,640]],
+            "needs_outpaint": true
+        }
     ]
 }"#;
 
         let body = json!({
             "contents": [{
                 "parts": [
-                    {"text": prompt},
                     {
                         "inline_data": {
                             "mime_type": mime_type,
                             "data": image_base64
                         }
-                    }
+                    },
+                    {"text": prompt}
                 ]
             }],
             "generationConfig": {
-                "temperature": 0.2,
+                "temperature": GEMINI_TEMPERATURE,
                 "maxOutputTokens": 4096,
                 "responseMimeType": "application/json"
             }
@@ -499,6 +530,105 @@ Return ONLY valid JSON in this exact format:
         self.parse_detection_response(text, "google")
     }
 
+    // ========== Outpainting (Gemini 3 Pro) ==========
+
+    /// Fill non-rectangular edges of a cropped photo to produce a clean rectangle.
+    /// Takes the cropped image (rectangular bbox region) and the polygon contour
+    /// describing the actual photo shape within that region.
+    /// Gemini generates content for the areas outside the polygon but inside the rectangle.
+    pub async fn outpaint_to_rectangle(
+        &self,
+        api_key: &str,
+        cropped_base64: &str,
+        mime_type: &str,
+        contour_points: &[crate::models::Point2D],
+        bbox_width: u32,
+        bbox_height: u32,
+    ) -> Result<String> {
+        info!("=== OUTPAINT TO RECTANGLE ===");
+        info!("BBox size: {}x{}, contour points: {}", bbox_width, bbox_height, contour_points.len());
+
+        let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent";
+
+        // Convert contour points from global 0-1000 space to local bbox-relative percentages
+        // for the prompt description (Gemini works with the image it sees)
+        let contour_desc: Vec<String> = contour_points.iter().map(|p| {
+            format!("[{:.0}, {:.0}]", p.x, p.y)
+        }).collect();
+        let contour_json = contour_desc.join(", ");
+
+        let prompt = format!(
+            r#"This image is a cropped region from a flatbed scanner scan. It contains a photograph that is NOT a perfect rectangle — it has irregular edges from the scanner.
+
+The actual photo boundary is defined by this polygon (normalized 0-1000 coordinates within this image):
+[{}]
+
+Areas OUTSIDE the polygon but INSIDE the image rectangle are scanner bed background (usually dark/black).
+
+YOUR TASK: Generate a new version of this image where:
+1. The area INSIDE the polygon (the actual photo) remains EXACTLY as-is — do NOT modify it.
+2. The area OUTSIDE the polygon (scanner bed) is replaced with GENERATIVE OUTPAINTING that naturally extends the photo content.
+3. The result should look like a complete, rectangular photograph with no visible scanner bed edges.
+4. Match the style, colors, lighting, and era of the original photo.
+5. The outpainted areas should blend seamlessly with the photo edges.
+
+Generate the complete rectangular image."#,
+            contour_json
+        );
+
+        let body = json!({
+            "contents": [{
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": cropped_base64
+                        }
+                    },
+                    {"text": prompt}
+                ]
+            }],
+            "generationConfig": {
+                "temperature": GEMINI_TEMPERATURE,
+                "maxOutputTokens": 8192,
+                "response_modalities": ["TEXT", "IMAGE"]
+            }
+        });
+
+        info!("Sending outpainting request to Google Gemini...");
+        let response = self.client.post(url)
+            .header("x-goog-api-key", api_key)
+            .json(&body)
+            .send().await?;
+        let status = response.status();
+        info!("Outpainting response status: {}", status);
+
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            error!("Google API outpainting error: {}", error_text);
+            return Err(anyhow!("Google API outpainting error: {}", error_text));
+        }
+
+        let data: serde_json::Value = response.json().await?;
+
+        // Extract the generated image from the response
+        // Gemini returns images as inline_data in parts
+        if let Some(parts) = data["candidates"][0]["content"]["parts"].as_array() {
+            for part in parts {
+                if let Some(inline) = part.get("inline_data") {
+                    if let Some(img_data) = inline["data"].as_str() {
+                        info!("Outpainting successful, output size: {} bytes", img_data.len());
+                        return Ok(img_data.to_string());
+                    }
+                }
+            }
+        }
+
+        // Fallback: if no image generated, return original
+        info!("Outpainting: no image in response, returning original");
+        Ok(cropped_base64.to_string())
+    }
+
     // ========== Verification Agent (Gemini 3 Flash) ==========
 
     async fn call_gemini_flash_verification(
@@ -523,7 +653,7 @@ Return ONLY valid JSON in this exact format:
                 ]
             }],
             "generationConfig": {
-                "temperature": 0.2,
+                "temperature": GEMINI_TEMPERATURE,
                 "maxOutputTokens": 4096,
                 "responseMimeType": "application/json"
             }
@@ -583,7 +713,7 @@ Return ONLY valid JSON in this exact format:
                 ]
             }],
             "generationConfig": {
-                "temperature": 0.2,
+                "temperature": GEMINI_TEMPERATURE,
                 "maxOutputTokens": 4096,
                 "responseMimeType": "application/json"
             }
@@ -685,8 +815,11 @@ Evaluate the detection quality:
 2. OVERLAP CHECK: Do any boxes significantly overlap (>10% area)?
 3. SIZE REASONABLENESS: Are all boxes of reasonable size (not too tiny or too large)?
 4. WITHIN BOUNDS: Are all coordinates within 0-1000 range?
-5. COMPLETENESS: Are all visible photos detected? Any missed?
+5. COMPLETENESS: Are all visible photos detected? Carefully scan ALL corners and edges. Any missed?
 6. FALSE POSITIVES: Any boxes covering scanner bed or non-photo areas?
+
+IMPORTANT: If any photos are MISSING from the detection, you MUST provide their approximate bounding boxes
+in the "missing_boxes" array so the system can automatically add them.
 
 Return ONLY valid JSON:
 {{
@@ -703,7 +836,10 @@ Return ONLY valid JSON:
     "issues": [
         {{"severity": "critical|warning|info", "description": "what is wrong", "suggestion": "how to fix"}}
     ],
-    "recommendations": ["suggestion 1"]
+    "recommendations": ["suggestion 1"],
+    "missing_boxes": [
+        {{"x": 20, "y": 20, "width": 480, "height": 210, "confidence": 0.80, "label": "missed photo", "rotation_angle": 0}}
+    ]
 }}"#, boxes_json);
 
         let parsed = self.call_gemini_flash_verification(
@@ -800,6 +936,30 @@ Return ONLY valid JSON:
                 .filter_map(|r| r.as_str().map(|s| s.to_string()))
                 .collect();
         }
+
+        // Missing boxes (verifier-suggested bounding boxes for missed photos)
+        if let Some(boxes) = parsed["missing_boxes"].as_array() {
+            result.missing_boxes = boxes.iter().filter_map(|b| {
+                let x = b["x"].as_u64().or_else(|| b["x"].as_f64().map(|f| f as u64))?;
+                let y = b["y"].as_u64().or_else(|| b["y"].as_f64().map(|f| f as u64))?;
+                let w = b["width"].as_u64().or_else(|| b["width"].as_f64().map(|f| f as u64))?;
+                let h = b["height"].as_u64().or_else(|| b["height"].as_f64().map(|f| f as u64))?;
+                Some(BoundingBox {
+                    x: x as u32,
+                    y: y as u32,
+                    width: w as u32,
+                    height: h as u32,
+                    confidence: b["confidence"].as_f64().unwrap_or(0.7) as f32,
+                    label: b["label"].as_str().map(|s| s.to_string()),
+                    rotation_angle: b["rotation_angle"].as_f64().unwrap_or(0.0) as f32,
+                    contour: Vec::new(),
+                    needs_outpaint: false,
+                })
+            }).collect();
+            if !result.missing_boxes.is_empty() {
+                info!("Verifier found {} missing photo(s)", result.missing_boxes.len());
+            }
+        }
     }
 
     fn parse_detection_response(&self, text: &str, provider: &str) -> Result<DetectionResult> {
@@ -829,6 +989,26 @@ Return ONLY valid JSON:
                     let w = b["width"].as_u64().or_else(|| b["width"].as_f64().map(|f| f as u64))?;
                     let h = b["height"].as_u64().or_else(|| b["height"].as_f64().map(|f| f as u64))?;
 
+                    // Parse polygon contour if present
+                    let contour = if let Some(pts) = b["contour"].as_array() {
+                        pts.iter().filter_map(|p| {
+                            if let Some(arr) = p.as_array() {
+                                let px = arr.first()?.as_f64()?;
+                                let py = arr.get(1)?.as_f64()?;
+                                Some(crate::models::Point2D { x: px as f32, y: py as f32 })
+                            } else {
+                                // Also handle {"x": .., "y": ..} format
+                                let px = p["x"].as_f64()?;
+                                let py = p["y"].as_f64()?;
+                                Some(crate::models::Point2D { x: px as f32, y: py as f32 })
+                            }
+                        }).collect()
+                    } else {
+                        Vec::new()
+                    };
+
+                    let needs_outpaint = b["needs_outpaint"].as_bool().unwrap_or(false);
+
                     Some(BoundingBox {
                         x: x as u32,
                         y: y as u32,
@@ -837,6 +1017,8 @@ Return ONLY valid JSON:
                         confidence: b["confidence"].as_f64().unwrap_or(0.9) as f32,
                         label: b["label"].as_str().map(|s| s.to_string()),
                         rotation_angle: b["rotation_angle"].as_f64().unwrap_or(0.0) as f32,
+                        contour,
+                        needs_outpaint,
                     })
                 })
                 .collect()
@@ -844,7 +1026,10 @@ Return ONLY valid JSON:
             Vec::new()
         };
 
-        info!("Detected {} photos with {} bounding boxes", photo_count, bounding_boxes.len());
+        info!("Detected {} photos with {} bounding boxes ({} need outpainting)",
+            photo_count, bounding_boxes.len(),
+            bounding_boxes.iter().filter(|b| b.needs_outpaint).count()
+        );
 
         Ok(DetectionResult {
             id: uuid::Uuid::new_v4().to_string(),
