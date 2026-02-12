@@ -1,51 +1,118 @@
 // src/hooks/api/utils.ts
 /**
- * API Utilities
- * =============
- * Shared utility functions for API hooks.
+ * API Utilities — v4.0 Web Edition
+ * =================================
+ * HTTP client functions for communicating with the Axum backend.
+ * Replaces Tauri's invoke() with standard fetch().
  */
-import { toast } from 'sonner';
-import { isTauri } from '../../utils/tauri';
 
 // Re-export sleep as delay for backward compatibility within API hooks
 export { sleep as delay } from '../../utils';
 
 // ============================================
-// BROWSER MODE WARNING
+// API CLIENT
 // ============================================
 
-let browserModeWarningShown = false;
+/** Backend base URL — defaults to localhost:8080 for local dev */
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8080';
 
-export function showBrowserModeWarning(): void {
-  if (!browserModeWarningShown) {
-    browserModeWarningShown = true;
-    toast('Tryb przeglądarkowy - niektóre funkcje wymagają aplikacji Tauri', {
-      icon: '⚠️',
-      duration: 5000,
-    });
-  }
+/** Default timeout for API calls (120s — AI operations like restore_image are slow) */
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+interface ApiErrorBody {
+  error?: string;
 }
-
-export function resetBrowserModeWarning(): void {
-  browserModeWarningShown = false;
-}
-
-// ============================================
-// SAFE INVOKE
-// ============================================
 
 /**
- * Safe invoke wrapper - throws when not in Tauri, calls Tauri command otherwise.
- * This is the canonical version used by all API hooks.
+ * Parse response — throw on non-2xx status codes.
  */
-export async function safeInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri()) {
-    showBrowserModeWarning();
-    throw new Error(`Tauri is required for "${command}" - running in browser mode`);
+async function handleResponse<T>(response: Response, path: string): Promise<T> {
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: response.statusText }));
+    const message = (body as ApiErrorBody).error || `HTTP ${response.status} on ${path}`;
+    throw new Error(message);
   }
+  return (await response.json()) as T;
+}
 
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<T>(command, args);
+/**
+ * GET request to the Axum backend.
+ */
+export async function apiGet<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    return handleResponse<T>(response, path);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${timeoutMs / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * POST request with JSON body to the Axum backend.
+ */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    return handleResponse<T>(response, path);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${timeoutMs / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * DELETE request to the Axum backend.
+ */
+export async function apiDelete<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    return handleResponse<T>(response, path);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${timeoutMs / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ============================================

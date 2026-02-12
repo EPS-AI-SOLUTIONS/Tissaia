@@ -1,16 +1,14 @@
 // src/hooks/api/useSettings.ts
 /**
- * Settings Hooks
- * ==============
+ * Settings Hooks — v4.0 Web Edition
+ * ===================================
  * Hooks for application settings management.
+ * Always connects to the Axum backend via HTTP.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { isTauri } from '../../utils/tauri';
-import { mockSettings } from './mocks';
 import { queryKeys } from './queryKeys';
 import type { AppSettings } from './types';
-import { safeInvoke } from './utils';
+import { apiGet, apiPost } from './utils';
 
 // ============================================
 // FETCH SETTINGS
@@ -23,10 +21,7 @@ export function useSettings() {
   return useQuery({
     queryKey: queryKeys.settings,
     queryFn: async (): Promise<AppSettings> => {
-      if (!isTauri()) {
-        return mockSettings;
-      }
-      return safeInvoke<AppSettings>('get_settings');
+      return apiGet<AppSettings>('/api/settings');
     },
   });
 }
@@ -43,11 +38,7 @@ export function useSaveSettings() {
 
   return useMutation({
     mutationFn: async (settings: AppSettings): Promise<void> => {
-      if (!isTauri()) {
-        toast.error('Zapisywanie ustawień wymaga aplikacji Tauri');
-        throw new Error('Tauri is required for saving settings');
-      }
-      return safeInvoke('save_settings', { settings });
+      return apiPost('/api/settings', { settings });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings });
@@ -72,11 +63,7 @@ export function useSetApiKey() {
 
   return useMutation({
     mutationFn: async ({ provider, key }: SetApiKeyParams): Promise<void> => {
-      if (!isTauri()) {
-        toast.error('Ustawianie klucza API wymaga aplikacji Tauri');
-        throw new Error('Tauri is required for setting API key');
-      }
-      return safeInvoke('set_api_key', { provider, key });
+      return apiPost('/api/keys', { provider, key });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });

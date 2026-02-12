@@ -78,7 +78,7 @@ describe('BrowserModeWarning', () => {
   describe('content', () => {
     it('displays warning message', () => {
       renderWithTheme(<BrowserModeWarning />);
-      expect(screen.getByText(/Funkcje AI wymagaja aplikacji desktopowej/)).toBeInTheDocument();
+      expect(screen.getByText(/Podaj klucz Google API|Detekcja AI aktywna/)).toBeInTheDocument();
     });
 
     it('displays browser mode title', () => {

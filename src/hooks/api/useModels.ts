@@ -1,16 +1,15 @@
 // src/hooks/api/useModels.ts
 /**
- * AI Models Hooks
- * ===============
+ * AI Models Hooks — v4.0 Web Edition
+ * ====================================
  * Hooks for AI model selection and management.
+ * Always connects to the Axum backend via HTTP.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { isTauri } from '../../utils/tauri';
-import { DEFAULT_MODEL_ID, mockAvailableModel, mockOllamaModels } from './mocks';
 import { queryKeys } from './queryKeys';
 import type { AiModel, AppSettings, AvailableModel } from './types';
 import { useProvidersStatus } from './useHealth';
-import { safeInvoke } from './utils';
+import { apiGet, apiPost } from './utils';
 
 // ============================================
 // MODEL CONFIGURATIONS
@@ -91,10 +90,7 @@ export function useOllamaModels() {
   return useQuery({
     queryKey: queryKeys.ollamaModels,
     queryFn: async (): Promise<AiModel[]> => {
-      if (!isTauri()) {
-        return mockOllamaModels;
-      }
-      return safeInvoke<AiModel[]>('get_ollama_models');
+      return apiGet<AiModel[]>('/api/models/ollama');
     },
   });
 }
@@ -135,11 +131,6 @@ export function useAvailableModels() {
         }
       }
 
-      // Return mock model if no models available (browser mode)
-      if (!isTauri() || models.length === 0) {
-        return [mockAvailableModel];
-      }
-
       return models;
     },
     enabled: !!providers,
@@ -151,36 +142,42 @@ export function useAvailableModels() {
 // ============================================
 
 const SELECTED_MODEL_STORAGE_KEY = 'selected-model';
+const DEFAULT_MODEL_ID = 'gemini-2.0-flash-exp';
 
 /**
- * Get selected model from storage
+ * Get selected model — fetches from backend settings
  */
 export function useSelectedModel() {
   return useQuery({
     queryKey: queryKeys.selectedModel,
     queryFn: async (): Promise<string> => {
-      if (!isTauri()) {
-        return localStorage.getItem(`tissaia-${SELECTED_MODEL_STORAGE_KEY}`) || DEFAULT_MODEL_ID;
-      }
-      const settings = await safeInvoke<AppSettings>('get_settings');
+      const settings = await apiGet<AppSettings>('/api/settings');
       return settings?.preferred_provider || DEFAULT_MODEL_ID;
     },
   });
 }
 
 /**
- * Save selected model preference
+ * Save selected model preference — persists via save_settings
  */
 export function useSetSelectedModel() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (modelId: string): Promise<string> => {
-      if (!isTauri()) {
-        localStorage.setItem(`tissaia-${SELECTED_MODEL_STORAGE_KEY}`, modelId);
-        return modelId;
+      // Save to localStorage for instant UI feedback
+      localStorage.setItem(`tissaia-${SELECTED_MODEL_STORAGE_KEY}`, modelId);
+
+      // Also persist to backend settings
+      try {
+        const currentSettings = await apiGet<AppSettings>('/api/settings');
+        await apiPost('/api/settings', {
+          settings: { ...currentSettings, preferred_provider: modelId },
+        });
+      } catch (e) {
+        console.warn('[Models] Failed to persist model selection to backend:', e);
       }
-      await safeInvoke('set_preferred_model', { modelId });
+
       return modelId;
     },
     onSuccess: () => {

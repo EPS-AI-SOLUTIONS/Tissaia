@@ -17,13 +17,15 @@ export type {
   ProviderStatus as ApiProviderStatus,
   RestorationResult as ApiRestorationResult,
 } from './useApi';
-// API Hooks (Tauri) - Modular Exports
+// API Hooks — v4.0 Web Edition (Modular Exports)
 export {
+  // Utilities (HTTP client functions)
+  apiDelete,
+  apiGet,
+  apiPost,
   fileToBase64,
   // Query Keys
   queryKeys,
-  // Utilities
-  safeInvoke,
   useAvailableModels,
   useClearHistory,
   useDefaultModel,

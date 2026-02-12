@@ -46,9 +46,12 @@ function BoxOverlay({ box, index, onRemove }: BoxOverlayProps) {
       className="absolute border-2 border-white/70 bg-white/10 group cursor-pointer hover:bg-white/20 transition-all"
       style={{ left, top, width, height }}
     >
-      <div className="absolute -top-6 left-0 bg-white text-black text-xs font-bold px-2 py-0.5 rounded-t">
+      <div className="absolute -top-6 left-0 bg-white text-black text-xs font-bold px-2 py-0.5 rounded-t whitespace-nowrap">
         #{index + 1}
         {box.confidence < 0.8 && ' ?'}
+        <span className="ml-1 font-normal opacity-60">
+          ({box.x},{box.y} {box.width}x{box.height})
+        </span>
       </div>
       <button
         type="button"
@@ -60,6 +63,111 @@ function BoxOverlay({ box, index, onRemove }: BoxOverlayProps) {
       >
         <X size={12} />
       </button>
+    </div>
+  );
+}
+
+// ============================================
+// SCAN PREVIEW WITH ACCURATE BOUNDING BOXES
+// ============================================
+// Measures the actual rendered image size to position boxes correctly.
+// Without this, object-contain causes the <img> HTML box to be larger
+// than the visible image, making percentage-based overlays inaccurate.
+
+interface ScanPreviewWithBoxesProps {
+  src: string;
+  alt: string;
+  boxes: BoundingBox[];
+  isDetecting: boolean;
+  onRemoveBox: (index: number) => void;
+  theme: ReturnType<typeof useViewTheme>;
+}
+
+function ScanPreviewWithBoxes({
+  src,
+  alt,
+  boxes,
+  isDetecting,
+  onRemoveBox,
+  theme,
+}: ScanPreviewWithBoxesProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imgSize, setImgSize] = useState<{
+    width: number;
+    height: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+
+  const updateSize = useCallback(() => {
+    const img = imgRef.current;
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
+
+    const containerW = img.clientWidth;
+    const containerH = img.clientHeight;
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+
+    // Calculate rendered size with object-contain
+    const scale = Math.min(containerW / natW, containerH / natH);
+    const renderedW = natW * scale;
+    const renderedH = natH * scale;
+    const offsetX = (containerW - renderedW) / 2;
+    const offsetY = (containerH - renderedH) / 2;
+
+    setImgSize({ width: renderedW, height: renderedH, offsetX, offsetY });
+  }, []);
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    img.addEventListener('load', updateSize);
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(img);
+
+    // If already loaded (cached), measure now
+    if (img.complete) updateSize();
+
+    return () => {
+      img.removeEventListener('load', updateSize);
+      observer.disconnect();
+    };
+  }, [updateSize]);
+
+  return (
+    <div className="relative inline-block max-w-full max-h-full">
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className="block max-w-full max-h-[calc(100vh-320px)] object-contain rounded-lg"
+      />
+      {/* Overlay positioned exactly over the rendered image area */}
+      {imgSize && !isDetecting && (
+        <div
+          className="absolute"
+          style={{
+            left: imgSize.offsetX,
+            top: imgSize.offsetY,
+            width: imgSize.width,
+            height: imgSize.height,
+          }}
+        >
+          {boxes.map((box, idx) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: boxes are dynamically reordered by user
+            <BoxOverlay key={idx} box={box} index={idx} onRemove={onRemoveBox} />
+          ))}
+        </div>
+      )}
+      {isDetecting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+          <div className="text-center">
+            <Scan size={48} className={`mx-auto mb-3 ${theme.textAccent} animate-pulse`} />
+            <p className={theme.textAccent}>Analizuję skan...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -156,6 +264,9 @@ export default function CropView() {
   });
 
   const detectMutation = useDetectPhotos();
+  const detectMutateAsyncRef = useRef(detectMutation.mutateAsync);
+  detectMutateAsyncRef.current = detectMutation.mutateAsync;
+
   const verifyDetectionMutation = useVerifyDetection();
   const setVerificationResult = usePhotoStore((s) => s.setVerificationResult);
   const verificationResults = usePhotoStore((s) => s.verificationResults);
@@ -194,7 +305,7 @@ export default function CropView() {
     setProgressMessage('Wykrywanie zdjęć na skanie...');
 
     try {
-      const result = await detectMutation.mutateAsync({ file: currentPhoto.file });
+      const result = await detectMutateAsyncRef.current({ file: currentPhoto.file });
       console.log('[CropView] Detection result:', result);
 
       if (result.bounding_boxes.length > 0) {
@@ -253,15 +364,18 @@ export default function CropView() {
       setProgressMessage('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPhoto, detectMutation, setIsLoading, setProgressMessage, setDetectionResult]);
+  }, [currentPhoto, setIsLoading, setProgressMessage, setDetectionResult]);
 
-  // Auto-detect on mount
+  // Auto-detect on mount (ref-stable to avoid re-trigger loops)
+  const runDetectionRef = useRef(runDetection);
+  runDetectionRef.current = runDetection;
+
   useEffect(() => {
     if (currentPhoto && !hasDetected.current && !isDetecting) {
       hasDetected.current = true;
-      runDetection();
+      runDetectionRef.current();
     }
-  }, [currentPhoto, isDetecting, runDetection]);
+  }, [currentPhoto, isDetecting]);
 
   const removeBox = useCallback((index: number) => {
     setBoxes((prev) => prev.filter((_, i) => i !== index));
@@ -317,12 +431,10 @@ export default function CropView() {
     }
   }, [pipeline.progress?.message, setProgressMessage]);
 
-  // Navigate to results when pipeline completes
-  useEffect(() => {
-    if (pipeline.report && !pipeline.isRunning) {
-      setCurrentView('results');
-    }
-  }, [pipeline.report, pipeline.isRunning, setCurrentView]);
+  // Navigation to results is handled in runFullPipeline callback.
+  // No additional useEffect needed — the global pipeline store preserves
+  // report across view changes, so a stale report would cause an
+  // unwanted redirect if we navigated here based on it.
 
   if (!currentPhoto) return null;
 
@@ -331,19 +443,40 @@ export default function CropView() {
 
   return (
     <div className="p-6 h-full flex flex-col">
-      {/* Title */}
-      <div className="mb-6">
+      {/* Title + detection progress */}
+      <div className="mb-6 space-y-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl ${theme.accentBg}`}>
-            <Scissors className={theme.iconAccent} size={24} />
+          <div className={`p-2 rounded-xl ${theme.accentBg} relative`}>
+            {isDetecting ? (
+              <Loader2 className={`${theme.iconAccent} animate-spin`} size={24} />
+            ) : (
+              <Scissors className={theme.iconAccent} size={24} />
+            )}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h2 className={`text-2xl font-bold ${theme.textAccent}`}>Rozdziel zdjęcia</h2>
             <p className={`${theme.textMuted} mt-1`}>
               {isDetecting ? 'Wykrywanie zdjęć na skanie...' : `Wykryto ${boxes.length} zdjęć`}
             </p>
           </div>
         </div>
+
+        {/* Detection progress bar */}
+        {isDetecting && (
+          <div className="space-y-1">
+            <div
+              className={`relative h-1.5 ${theme.isLight ? 'bg-slate-200' : 'bg-white/10'} rounded-full overflow-hidden`}
+            >
+              <div
+                className={`absolute inset-y-0 left-0 ${theme.isLight ? 'bg-emerald-500' : 'bg-white'} rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]`}
+                style={{ width: '40%' }}
+              />
+            </div>
+            <p className={`text-xs ${theme.textMuted}`}>
+              AI analizuje skan — to może potrwać kilka sekund
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
@@ -408,29 +541,14 @@ export default function CropView() {
           <div className={`${theme.glassPanel} p-4 h-full flex flex-col`}>
             {/* Scan preview with bounding boxes */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
-              <div className="relative inline-block max-w-full max-h-full">
-                <img
-                  src={currentPhoto.preview}
-                  alt={currentPhoto.name}
-                  className="block max-w-full max-h-[calc(100vh-320px)] object-contain rounded-lg"
-                />
-                {!isDetecting &&
-                  boxes.map((box, idx) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: boxes are dynamically reordered by user
-                    <BoxOverlay key={idx} box={box} index={idx} onRemove={removeBox} />
-                  ))}
-                {isDetecting && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                    <div className="text-center">
-                      <Scan
-                        size={48}
-                        className={`mx-auto mb-3 ${theme.textAccent} animate-pulse`}
-                      />
-                      <p className={theme.textAccent}>Analizuję skan...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ScanPreviewWithBoxes
+                src={currentPhoto.preview}
+                alt={currentPhoto.name}
+                boxes={boxes}
+                isDetecting={isDetecting}
+                onRemoveBox={removeBox}
+                theme={theme}
+              />
             </div>
 
             {/* Box count + verification */}

@@ -1,15 +1,14 @@
 // src/hooks/api/useHistory.ts
 /**
- * History Hooks
- * =============
+ * History Hooks — v4.0 Web Edition
+ * =================================
  * Hooks for processing history management.
+ * Always connects to the Axum backend via HTTP.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { isTauri } from '../../utils/tauri';
 import { queryKeys } from './queryKeys';
 import type { HistoryEntry } from './types';
-import { safeInvoke } from './utils';
+import { apiDelete, apiGet } from './utils';
 
 // ============================================
 // FETCH HISTORY
@@ -22,10 +21,7 @@ export function useHistory() {
   return useQuery({
     queryKey: queryKeys.history,
     queryFn: async (): Promise<HistoryEntry[]> => {
-      if (!isTauri()) {
-        return [];
-      }
-      return safeInvoke<HistoryEntry[]>('get_history');
+      return apiGet<HistoryEntry[]>('/api/history');
     },
   });
 }
@@ -42,11 +38,7 @@ export function useClearHistory() {
 
   return useMutation({
     mutationFn: async (): Promise<void> => {
-      if (!isTauri()) {
-        toast.error('Czyszczenie historii wymaga aplikacji Tauri');
-        throw new Error('Tauri is required for clearing history');
-      }
-      return safeInvoke('clear_history');
+      return apiDelete('/api/history');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.history });

@@ -1,7 +1,7 @@
 // src/hooks/api/index.ts
 /**
- * API Hooks - Barrel Export
- * =========================
+ * API Hooks - Barrel Export — v4.0 Web Edition
+ * ==============================================
  * Centralized exports for all API hooks.
  */
 
@@ -32,7 +32,7 @@ export type {
 } from './types';
 export type { CropPhotosParams, DetectPhotosParams } from './useCrop';
 // Crop Hooks
-export { useCropPhotos, useDetectPhotos } from './useCrop';
+export { useCropPhotos, useDetectPhotos, useOutpaintPhoto } from './useCrop';
 // Health Hooks
 export { useHealth, useProvidersStatus, useStatus } from './useHealth';
 // History Hooks
@@ -60,15 +60,15 @@ export type {
 // Verification Hooks
 export { useVerifyCrop, useVerifyDetection, useVerifyRestoration } from './useVerification';
 export type { FileBase64Result } from './utils';
-// Utilities
+// Utilities (v4.0 — HTTP client functions replace Tauri invoke)
 export {
+  apiDelete,
+  apiGet,
+  apiPost,
   delay,
   fileToBase64,
   fileToDataUrl,
   getFromStorage,
   getStorageKey,
-  resetBrowserModeWarning,
-  safeInvoke,
   setToStorage,
-  showBrowserModeWarning,
 } from './utils';

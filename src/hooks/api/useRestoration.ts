@@ -1,15 +1,14 @@
 // src/hooks/api/useRestoration.ts
 /**
- * Restoration Hooks
- * =================
+ * Restoration Hooks — v4.0 Web Edition
+ * ======================================
  * Hooks for image restoration operations.
+ * Always connects to the Axum backend via HTTP.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { isTauri } from '../../utils/tauri';
-import { createMockRestorationResult, MOCK_RESTORATION_DELAY } from './mocks';
 import { queryKeys } from './queryKeys';
 import type { RestorationResult } from './types';
-import { delay, fileToBase64, safeInvoke } from './utils';
+import { apiPost, fileToBase64 } from './utils';
 
 // ============================================
 // RESTORE IMAGE
@@ -20,24 +19,17 @@ export interface RestoreImageParams {
 }
 
 /**
- * Restore an image using Tauri backend
+ * Restore an image using the Axum backend
  */
 export function useRestoreImage() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ file }: RestoreImageParams): Promise<RestorationResult> => {
-      if (!isTauri()) {
-        // Mock restoration for browser/test mode
-        await delay(MOCK_RESTORATION_DELAY);
-        const { base64 } = await fileToBase64(file);
-        return createMockRestorationResult(base64);
-      }
-
       const { base64, mimeType } = await fileToBase64(file);
-      return safeInvoke<RestorationResult>('restore_image', {
-        imageBase64: base64,
-        mimeType,
+      return apiPost<RestorationResult>('/api/restore', {
+        image_base64: base64,
+        mime_type: mimeType,
       });
     },
     onSuccess: () => {

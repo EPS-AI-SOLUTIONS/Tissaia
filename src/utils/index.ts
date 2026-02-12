@@ -4,9 +4,6 @@
  * =================
  */
 
-// Tauri environment detection (only isTauri - safeInvoke lives in hooks/api/utils)
-export { isTauri } from './tauri';
-
 /**
  * Format bytes to human-readable string
  */

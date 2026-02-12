@@ -1,54 +1,49 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-// https://v2.tauri.app/start/frontend/vite/
+// Vite config — v4.0 Web Edition
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     // Gzip compression for production
-    isProd && viteCompression({
-      algorithm: 'gzip',
-      threshold: 1024,
-      deleteOriginFile: false,
-    }),
+    isProd &&
+      viteCompression({
+        algorithm: 'gzip',
+        threshold: 1024,
+        deleteOriginFile: false,
+      }),
     // Brotli compression for production
-    isProd && viteCompression({
-      algorithm: 'brotliCompress',
-      threshold: 1024,
-      deleteOriginFile: false,
-    }),
+    isProd &&
+      viteCompression({
+        algorithm: 'brotliCompress',
+        threshold: 1024,
+        deleteOriginFile: false,
+      }),
   ].filter(Boolean),
 
-  // Tauri expects a fixed port
   server: {
     port: 5175,
     host: '0.0.0.0',
     strictPort: true,
     watch: {
-      ignored: ['**/playwright-report/**', '**/test-results/**', '**/src-tauri/**'],
+      ignored: ['**/playwright-report/**', '**/test-results/**'],
     },
   },
 
-  // Prevent vite from obscuring rust errors
   clearScreen: false,
 
-  // Env variables starting with TAURI_ are exposed to JS
-  envPrefix: ['VITE_', 'TAURI_'],
+  envPrefix: ['VITE_'],
 
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // Tauri uses Chromium on Windows and WebKit on macOS/Linux
-    target: process.env.TAURI_ENV_PLATFORM === 'windows'
-      ? 'chrome105'
-      : 'safari14',
-    // Don't minify for debug builds
-    minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
+    target: 'es2022',
+    minify: isProd ? 'esbuild' : false,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -67,4 +62,3 @@ export default defineConfig({
     include: ['react', 'react-dom', 'zustand', '@tanstack/react-query'],
   },
 });
-

@@ -57,3 +57,6 @@ src-tauri/target/
 target/
 Cargo.lock
 **/*.rs.bk
+
+# Generated files
+repomix-output.txt

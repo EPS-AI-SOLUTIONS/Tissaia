@@ -8,6 +8,13 @@
 export { selectCurrentJob, useJobStore } from './useJobStore';
 export { selectOptions, useOptionsStore } from './useOptionsStore';
 export { selectPhotos, usePhotoStore } from './usePhotoStore';
+export {
+  selectPipelineError,
+  selectPipelineIsRunning,
+  selectPipelineProgress,
+  selectPipelineReport,
+  usePipelineStore,
+} from './usePipelineStore';
 export { selectHistory, selectSettings, useSettingsStore } from './useSettingsStore';
 // Domain stores
 export { selectCurrentView, selectIsLoading, useViewStore } from './useViewStore';

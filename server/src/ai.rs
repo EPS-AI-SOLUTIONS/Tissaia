@@ -3,7 +3,7 @@ use crate::models::{
     VerificationCheck, VerificationIssue, VerificationResult, VerificationStage, VerificationStatus,
 };
 use anyhow::{anyhow, Result};
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 use reqwest::Client;
 use serde_json::json;
 use std::time::Duration;
@@ -565,9 +565,6 @@ Return ONLY valid JSON:
     // ========== Outpainting (Gemini 3 Pro) ==========
 
     /// Fill non-rectangular edges of a cropped photo to produce a clean rectangle.
-    /// Takes the cropped image (rectangular bbox region) and the polygon contour
-    /// describing the actual photo shape within that region.
-    /// Gemini generates content for the areas outside the polygon but inside the rectangle.
     pub async fn outpaint_to_rectangle(
         &self,
         api_key: &str,
@@ -582,8 +579,6 @@ Return ONLY valid JSON:
 
         let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent";
 
-        // Convert contour points from global 0-1000 space to local bbox-relative percentages
-        // for the prompt description (Gemini works with the image it sees)
         let contour_desc: Vec<String> = contour_points.iter().map(|p| {
             format!("[{:.0}, {:.0}]", p.x, p.y)
         }).collect();
@@ -643,8 +638,6 @@ Generate the complete rectangular image."#,
 
         let data: serde_json::Value = response.json().await?;
 
-        // Extract the generated image from the response
-        // Gemini returns images as inline_data in parts
         if let Some(parts) = data["candidates"][0]["content"]["parts"].as_array() {
             for part in parts {
                 if let Some(inline) = part.get("inline_data") {
@@ -656,7 +649,6 @@ Generate the complete rectangular image."#,
             }
         }
 
-        // Fallback: if no image generated, return original
         info!("Outpainting: no image in response, returning original");
         Ok(cropped_base64.to_string())
     }
@@ -1014,15 +1006,11 @@ Return ONLY valid JSON:
             boxes
                 .iter()
                 .filter_map(|b| {
-                    // Gemini may return coordinates as floats (e.g. 50.0 instead of 50).
-                    // as_u64() returns None for floats, so try as_f64() as fallback.
-                    // Clamp all normalized coordinates to [0, 1000] range.
                     let x = b["x"].as_u64().or_else(|| b["x"].as_f64().map(|f| f as u64))?.min(1000);
                     let y = b["y"].as_u64().or_else(|| b["y"].as_f64().map(|f| f as u64))?.min(1000);
                     let w = b["width"].as_u64().or_else(|| b["width"].as_f64().map(|f| f as u64))?.clamp(1, 1000 - x);
                     let h = b["height"].as_u64().or_else(|| b["height"].as_f64().map(|f| f as u64))?.clamp(1, 1000 - y);
 
-                    // Parse polygon contour if present, clamping points to [0, 1000]
                     let contour = if let Some(pts) = b["contour"].as_array() {
                         pts.iter().filter_map(|p| {
                             if let Some(arr) = p.as_array() {
@@ -1030,7 +1018,6 @@ Return ONLY valid JSON:
                                 let py = arr.get(1)?.as_f64()?.clamp(0.0, 1000.0);
                                 Some(crate::models::Point2D { x: px as f32, y: py as f32 })
                             } else {
-                                // Also handle {"x": .., "y": ..} format
                                 let px = p["x"].as_f64()?.clamp(0.0, 1000.0);
                                 let py = p["y"].as_f64()?.clamp(0.0, 1000.0);
                                 Some(crate::models::Point2D { x: px as f32, y: py as f32 })
@@ -1043,7 +1030,6 @@ Return ONLY valid JSON:
                     let needs_outpaint = b["needs_outpaint"].as_bool().unwrap_or(false);
                     let rotation_angle = b["rotation_angle"].as_f64().unwrap_or(0.0) as f32;
 
-                    // Log rotation reasoning from AI for debugging
                     if let Some(reasoning) = b["rotation_reasoning"].as_str() {
                         info!("Photo '{}' rotation reasoning: {} → angle={}",
                             b["label"].as_str().unwrap_or("?"), reasoning, rotation_angle);

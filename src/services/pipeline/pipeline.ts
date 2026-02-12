@@ -9,11 +9,6 @@
  * 4. Alchemy - restore, enhance, upscale each photo
  */
 import { v4 as uuidv4 } from 'uuid';
-import {
-  createMockRestorationResult,
-  MOCK_DETECTION_DELAY,
-  MOCK_RESTORATION_DELAY,
-} from '../../hooks/api/mocks';
 import type {
   BoundingBox,
   CroppedPhoto,
@@ -21,8 +16,9 @@ import type {
   DetectionResult,
   RestorationResult,
 } from '../../hooks/api/types';
-import { delay, fileToBase64, safeInvoke } from '../../hooks/api/utils';
-import { isTauri } from '../../utils/tauri';
+import { apiPost, delay, fileToBase64 } from '../../hooks/api/utils';
+import { getSession, saveSession, updateSession } from '../persistence/indexeddb';
+import { blobManager } from './blob-manager';
 import {
   DEFAULT_PIPELINE_OPTIONS,
   FILE_CONSTRAINTS,
@@ -65,6 +61,8 @@ export class TissaiaPipeline {
   private shards: CropShard[] = [];
   private photoReports: RestorationReport[] = [];
   private restorationResults: Map<string, RestorationResult> = new Map();
+  /** IndexedDB session ID for auto-save persistence */
+  private persistenceId: number | null = null;
 
   constructor(options?: Partial<PipelineOptions>) {
     this.options = { ...DEFAULT_PIPELINE_OPTIONS, ...options };
@@ -114,6 +112,8 @@ export class TissaiaPipeline {
           return this.stageDetection(this.ingestionResult);
         });
       }
+      // Auto-save after detection
+      this.persistState(file.name);
 
       // Stage 3: SmartCrop
       this.cropResult = await this.runStage('smartcrop', () => {
@@ -122,12 +122,16 @@ export class TissaiaPipeline {
         }
         return this.stageSmartCrop(this.ingestionResult, this.detectionResult);
       });
+      // Auto-save after crop
+      this.persistState(file.name);
 
       // Stage 4: Alchemy (restore each photo)
       await this.runStage('alchemy', () => {
         if (!this.cropResult) throw new Error('Crop result missing');
         return this.stageAlchemy(this.cropResult);
       });
+      // Auto-save after alchemy
+      this.persistState(file.name);
 
       // Build final report
       const report = this.buildReport();
@@ -209,6 +213,50 @@ export class TissaiaPipeline {
   destroy(): void {
     this.cancel();
     this.emitter.clear();
+    // Free all Blob URLs held by this pipeline's crops
+    blobManager.revokeAll();
+  }
+
+  /** Get the IndexedDB session ID (available after process starts). */
+  getPersistenceId(): number | null {
+    return this.persistenceId;
+  }
+
+  /** Auto-save current pipeline state to IndexedDB (fire-and-forget). */
+  private async persistState(filename: string): Promise<void> {
+    try {
+      const pipelineResults: Record<string, unknown> = {};
+      for (const [key, val] of this.restorationResults.entries()) {
+        pipelineResults[key] = { restoration: val };
+      }
+
+      if (this.persistenceId === null) {
+        this.persistenceId = await saveSession({
+          filename,
+          createdAt: new Date().toISOString(),
+          detectionResult: this.detectionResult,
+          croppedPhotos: this.cropResult?.photos ?? [],
+          pipelineResults,
+          verificationResults: {},
+        });
+      } else {
+        const existing = await getSession(this.persistenceId);
+        if (existing) {
+          await updateSession({
+            ...existing,
+            detectionResult: this.detectionResult ?? existing.detectionResult,
+            croppedPhotos: this.cropResult?.photos ?? existing.croppedPhotos,
+            pipelineResults: {
+              ...(existing.pipelineResults as Record<string, unknown>),
+              ...pipelineResults,
+            },
+          });
+        }
+      }
+    } catch (err) {
+      // Persistence is best-effort — never fail the pipeline
+      console.warn('[pipeline] Failed to persist state:', err);
+    }
   }
 
   // ============================================
@@ -304,17 +352,15 @@ export class TissaiaPipeline {
 
     this.emitStageProgress('ingestion', 90, 'Ekstrakcja metadanych...');
 
-    // Extract metadata via Rust (optional)
+    // Extract metadata via backend (optional)
     let exifData: Record<string, unknown> | undefined;
-    if (isTauri()) {
-      try {
-        exifData = await safeInvoke<Record<string, unknown>>('extract_metadata', {
-          imageBase64: base64,
-          mimeType,
-        });
-      } catch {
-        // extract_metadata may not exist - graceful fallback
-      }
+    try {
+      exifData = await apiPost<Record<string, unknown>>('/api/metadata', {
+        image_base64: base64,
+        mime_type: mimeType,
+      });
+    } catch {
+      // extract_metadata endpoint may not exist yet - graceful fallback
     }
 
     const metadata: ImageMetadata = {
@@ -387,22 +433,11 @@ export class TissaiaPipeline {
     this.emitStageProgress('detection', 10, 'Wysylanie do AI...');
     await this.checkPauseAndCancel();
 
-    if (!isTauri()) {
-      await delay(MOCK_DETECTION_DELAY);
-      const { mockDetectionResult } = await import('../../hooks/api/mocks');
-      this.emitStageProgress('detection', 100, 'Detekcja zakonczona');
-      return {
-        ...mockDetectionResult,
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-      };
-    }
-
     this.emitStageProgress('detection', 50, 'Analiza AI w toku...');
 
-    const result = await safeInvoke<DetectionResult>('detect_photos_with_retry', {
-      imageBase64: ingestion.base64,
-      mimeType: ingestion.mimeType,
+    const result = await apiPost<DetectionResult>('/api/detect/retry', {
+      image_base64: ingestion.base64,
+      mime_type: ingestion.mimeType,
     });
 
     // Fallback: if no boxes detected, treat entire image as one photo
@@ -443,25 +478,12 @@ export class TissaiaPipeline {
 
     this.emitStageProgress('smartcrop', 30, 'Przycinanie zdjec...');
 
-    let cropResult: CropResult;
-
-    if (!isTauri()) {
-      // Browser mode: use Canvas API
-      const { cropRegionBrowser } = await import('./browser-crop');
-      cropResult = await cropRegionBrowser(
-        ingestion.file,
-        sortedBoxes,
-        ingestion.file.name,
-        this.options.smartCrop.padding,
-      );
-    } else {
-      cropResult = await safeInvoke<CropResult>('crop_photos', {
-        imageBase64: ingestion.base64,
-        mimeType: ingestion.mimeType,
-        boundingBoxes: sortedBoxes,
-        originalFilename: ingestion.file.name,
-      });
-    }
+    const cropResult = await apiPost<CropResult>('/api/crop', {
+      image_base64: ingestion.base64,
+      mime_type: ingestion.mimeType,
+      bounding_boxes: sortedBoxes,
+      original_filename: ingestion.file.name,
+    });
 
     this.emitStageProgress('smartcrop', 80, 'Budowanie kontekstu shardow...');
 
@@ -477,6 +499,19 @@ export class TissaiaPipeline {
         neighbors: this.findNeighbors(idx, sortedBoxes),
       },
     }));
+
+    // Convert crop base64 to Blob URLs to reduce memory pressure.
+    // base64 strings are ~1.37x larger than raw binary.
+    // The blobManager holds binary Blobs and provides ObjectURLs for <img> display.
+    // base64 is re-derived on demand (e.g., when sending to Tauri restore API).
+    for (const photo of cropResult.photos) {
+      if (photo.image_base64) {
+        const blobId = blobManager.storeFromBase64(photo.image_base64, photo.mime_type);
+        // Store blobId in a sidecar field; keep base64 for backward compat with Tauri
+        (photo as unknown as Record<string, unknown>)._blobId = blobId;
+        (photo as unknown as Record<string, unknown>)._blobUrl = blobManager.getUrl(blobId);
+      }
+    }
 
     this.progress.totalPhotos = cropResult.photos.length;
     this.emitStageProgress('smartcrop', 100, `Przycieto ${cropResult.photos.length} zdjec`);
@@ -583,23 +618,23 @@ export class TissaiaPipeline {
 
     let finalImage = restorationResult.restored_image;
 
-    // Optional: Apply local filters (Rust-side)
-    if (this.options.enableLocalFilters && isTauri()) {
+    // Optional: Apply local filters (backend-side)
+    if (this.options.enableLocalFilters) {
       const filterStart = Date.now();
       try {
-        finalImage = await safeInvoke<string>('apply_local_filters', {
-          imageBase64: finalImage,
-          mimeType: photo.mime_type,
+        finalImage = await apiPost<string>('/api/filters', {
+          image_base64: finalImage,
+          mime_type: photo.mime_type,
         });
         report.localFiltersApplied.push('enhance');
       } catch {
-        // local filters command may not exist yet
+        // filters endpoint may not exist yet
       }
       report.processingTime.localFilters = Date.now() - filterStart;
     }
 
     // Optional: Upscale
-    if (this.options.enableUpscale && isTauri()) {
+    if (this.options.enableUpscale) {
       const upscaleStart = Date.now();
       this.emitStageProgress(
         'alchemy',
@@ -607,10 +642,10 @@ export class TissaiaPipeline {
         `Podnoszenie rozdzielczosci ${index + 1}/${total}...`,
       );
       try {
-        finalImage = await safeInvoke<string>('upscale_image', {
-          imageBase64: finalImage,
-          mimeType: photo.mime_type,
-          scaleFactor: this.options.upscaleFactor,
+        finalImage = await apiPost<string>('/api/upscale', {
+          image_base64: finalImage,
+          mime_type: photo.mime_type,
+          scale_factor: this.options.upscaleFactor,
         });
         report.enhancementsApplied.push(`Upscale ${this.options.upscaleFactor}x`);
       } catch (err) {
@@ -637,13 +672,9 @@ export class TissaiaPipeline {
   }
 
   private async restorePhoto(photo: CroppedPhoto): Promise<RestorationResult> {
-    if (!isTauri()) {
-      await delay(MOCK_RESTORATION_DELAY);
-      return createMockRestorationResult(photo.image_base64);
-    }
-    return safeInvoke<RestorationResult>('restore_image', {
-      imageBase64: photo.image_base64,
-      mimeType: photo.mime_type,
+    return apiPost<RestorationResult>('/api/restore', {
+      image_base64: photo.image_base64,
+      mime_type: photo.mime_type,
     });
   }
 

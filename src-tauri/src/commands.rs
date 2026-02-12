@@ -12,6 +12,86 @@ use tokio::sync::Mutex;
 
 type AppStateHandle = Arc<Mutex<AppState>>;
 
+/// Auto-trim dark edges (scanner bed background) from a cropped photo.
+/// Scans inward from each edge and removes rows/columns where the average
+/// brightness is below a threshold. Preserves at least 90% of the image.
+fn auto_trim_dark_edges(img: &image::DynamicImage) -> image::DynamicImage {
+    use image::GenericImageView;
+
+    let (w, h) = img.dimensions();
+    if w < 20 || h < 20 {
+        return img.clone();
+    }
+
+    let brightness_threshold: u8 = 60; // pixels darker than this are "scanner bed" (increased from 40 to catch dark grey)
+    let min_dark_fraction = 0.55; // 55% of pixels in a row/col must be dark to trim (lowered for mixed edges)
+    let max_trim_fraction = 0.08; // trim at most 8% from each side (increased from 5%)
+
+    let max_trim_x = (w as f64 * max_trim_fraction) as u32;
+    let max_trim_y = (h as f64 * max_trim_fraction) as u32;
+
+    let is_dark_pixel = |x: u32, y: u32| -> bool {
+        let p = img.get_pixel(x, y);
+        let avg = (p[0] as u16 + p[1] as u16 + p[2] as u16) / 3;
+        avg < brightness_threshold as u16
+    };
+
+    // Scan from left
+    let mut left = 0u32;
+    for x in 0..max_trim_x {
+        let dark_count = (0..h).filter(|&y| is_dark_pixel(x, y)).count();
+        if dark_count as f64 / h as f64 >= min_dark_fraction {
+            left = x + 1;
+        } else {
+            break;
+        }
+    }
+
+    // Scan from right
+    let mut right = w;
+    for x in (w.saturating_sub(max_trim_x)..w).rev() {
+        let dark_count = (0..h).filter(|&y| is_dark_pixel(x, y)).count();
+        if dark_count as f64 / h as f64 >= min_dark_fraction {
+            right = x;
+        } else {
+            break;
+        }
+    }
+
+    // Scan from top
+    let mut top = 0u32;
+    for y in 0..max_trim_y {
+        let dark_count = (0..w).filter(|&x| is_dark_pixel(x, y)).count();
+        if dark_count as f64 / w as f64 >= min_dark_fraction {
+            top = y + 1;
+        } else {
+            break;
+        }
+    }
+
+    // Scan from bottom
+    let mut bottom = h;
+    for y in (h.saturating_sub(max_trim_y)..h).rev() {
+        let dark_count = (0..w).filter(|&x| is_dark_pixel(x, y)).count();
+        if dark_count as f64 / w as f64 >= min_dark_fraction {
+            bottom = y;
+        } else {
+            break;
+        }
+    }
+
+    let new_w = right.saturating_sub(left).max(1);
+    let new_h = bottom.saturating_sub(top).max(1);
+
+    if new_w < w || new_h < h {
+        info!("Auto-trim: {}x{} → {}x{} (trimmed L:{} R:{} T:{} B:{})",
+            w, h, new_w, new_h, left, w - right, top, h - bottom);
+        img.crop_imm(left, top, new_w, new_h)
+    } else {
+        img.clone()
+    }
+}
+
 /// Read EXIF orientation and apply rotation correction to base64 image.
 /// Returns corrected base64 image (or original if no EXIF rotation needed).
 #[cfg(feature = "image-processing")]
@@ -289,10 +369,62 @@ pub async fn crop_photos(
     let (img_width, img_height) = img.dimensions();
     info!("Image dimensions: {}x{}", img_width, img_height);
 
-    let padding_factor = 0.02; // 2% padding
+    let padding_factor = 0.005; // 0.5% minimal padding (AI bbox should be tight already)
     let mut photos = Vec::new();
 
+    // Log all bounding boxes for debugging rotation issues
     for (idx, bbox) in bounding_boxes.iter().enumerate() {
+        info!("Box {}: x={} y={} w={} h={} rotation_angle={} label={:?}",
+            idx, bbox.x, bbox.y, bbox.width, bbox.height, bbox.rotation_angle, bbox.label);
+    }
+
+    // Validate and fix overlapping bounding boxes by shrinking overlaps
+    let mut fixed_boxes: Vec<BoundingBox> = bounding_boxes.clone();
+    for i in 0..fixed_boxes.len() {
+        for j in (i + 1)..fixed_boxes.len() {
+            let (a, b) = (&fixed_boxes[i], &fixed_boxes[j]);
+            // Check horizontal overlap
+            let a_right = a.x + a.width;
+            let b_right = b.x + b.width;
+            let a_bottom = a.y + a.height;
+            let b_bottom = b.y + b.height;
+
+            let h_overlap = (a_right.min(b_right) as i64 - a.x.max(b.x) as i64).max(0);
+            let v_overlap = (a_bottom.min(b_bottom) as i64 - a.y.max(b.y) as i64).max(0);
+
+            if h_overlap > 0 && v_overlap > 0 {
+                let overlap = h_overlap.min(v_overlap);
+                info!("Overlap detected between box {} and {}: {} units. Shrinking.", i, j, overlap);
+                let shrink = (overlap / 2 + 1) as u32;
+                // Shrink the overlapping dimension
+                if h_overlap <= v_overlap {
+                    // Horizontal overlap: shrink widths
+                    if fixed_boxes[i].x < fixed_boxes[j].x {
+                        fixed_boxes[i].width = fixed_boxes[i].width.saturating_sub(shrink);
+                        fixed_boxes[j].x += shrink;
+                        fixed_boxes[j].width = fixed_boxes[j].width.saturating_sub(shrink);
+                    } else {
+                        fixed_boxes[j].width = fixed_boxes[j].width.saturating_sub(shrink);
+                        fixed_boxes[i].x += shrink;
+                        fixed_boxes[i].width = fixed_boxes[i].width.saturating_sub(shrink);
+                    }
+                } else {
+                    // Vertical overlap: shrink heights
+                    if fixed_boxes[i].y < fixed_boxes[j].y {
+                        fixed_boxes[i].height = fixed_boxes[i].height.saturating_sub(shrink);
+                        fixed_boxes[j].y += shrink;
+                        fixed_boxes[j].height = fixed_boxes[j].height.saturating_sub(shrink);
+                    } else {
+                        fixed_boxes[j].height = fixed_boxes[j].height.saturating_sub(shrink);
+                        fixed_boxes[i].y += shrink;
+                        fixed_boxes[i].height = fixed_boxes[i].height.saturating_sub(shrink);
+                    }
+                }
+            }
+        }
+    }
+
+    for (idx, bbox) in fixed_boxes.iter().enumerate() {
         // Convert normalized coords (0-1000) to pixel coords
         let mut px = (bbox.x as f64 / 1000.0 * img_width as f64) as i64;
         let mut py = (bbox.y as f64 / 1000.0 * img_height as f64) as i64;
@@ -333,7 +465,9 @@ pub async fn crop_photos(
             cropped
         };
 
-        let (cw, ch) = rotated.dimensions();
+        // Auto-trim dark scanner bed edges that the AI bbox may have included
+        let trimmed = auto_trim_dark_edges(&rotated);
+        let (cw, ch) = trimmed.dimensions();
 
         // Encode back to base64
         let mut buf = std::io::Cursor::new(Vec::new());
@@ -342,7 +476,7 @@ pub async fn crop_photos(
             "image/webp" => image::ImageFormat::WebP,
             _ => image::ImageFormat::Jpeg,
         };
-        rotated.write_to(&mut buf, output_format)
+        trimmed.write_to(&mut buf, output_format)
             .map_err(|e| format!("Image encode error: {}", e))?;
 
         let cropped_base64 = STANDARD.encode(buf.into_inner());

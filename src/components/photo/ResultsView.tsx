@@ -1,9 +1,10 @@
 // src/components/photo/ResultsView.tsx
 /**
- * Restoration Results View - Tauri Edition
- * =========================================
+ * Restoration Results View — v4.0 Web Edition
+ * =============================================
  * Display and download restored photos.
  * Supports both single-photo (legacy) and multi-photo (pipeline) results.
+ * Browser-only download (no native dialogs).
  */
 
 import { CheckCircle, Clock, Download, FolderOpen, RotateCcw, RotateCw } from 'lucide-react';
@@ -12,41 +13,17 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useViewTheme } from '../../hooks';
 import type { CroppedPhoto, RestorationResult, VerificationResult } from '../../hooks/api/types';
-import { safeInvoke } from '../../hooks/api/utils';
+import { apiPost } from '../../hooks/api/utils';
 import { usePhotoStore } from '../../store/usePhotoStore';
 import { useViewStore } from '../../store/useViewStore';
-import { isTauri } from '../../utils/tauri';
 import VerificationBadge from '../ui/VerificationBadge';
 
 // ============================================
-// SAVE IMAGE UTILITY (Tauri dialog + fallback)
+// SAVE IMAGE UTILITY (browser download)
 // ============================================
 
 async function saveImageWithDialog(base64: string, defaultName: string): Promise<string | null> {
-  if (isTauri()) {
-    const { save } = await import('@tauri-apps/plugin-dialog');
-    const filePath = await save({
-      defaultPath: defaultName,
-      filters: [
-        {
-          name: 'Obrazy',
-          extensions: ['png', 'jpg', 'jpeg', 'webp'],
-        },
-      ],
-      title: 'Zapisz odrestaurowane zdjęcie',
-    });
-
-    if (!filePath) return null; // user cancelled
-
-    await safeInvoke<string>('save_image', {
-      imageBase64: base64,
-      filePath,
-    });
-
-    return filePath;
-  }
-
-  // Browser fallback — standard download
+  // Browser download via data URL
   const link = document.createElement('a');
   link.href = `data:image/png;base64,${base64}`;
   link.download = defaultName;
@@ -61,23 +38,25 @@ async function saveImageWithDialog(base64: string, defaultName: string): Promise
 // ============================================
 
 /**
- * Rotate a base64 image by the given degrees using Canvas API (browser mode)
- * or Tauri command (desktop mode).
+ * Rotate a base64 image by the given degrees.
+ * Tries backend first, falls back to Canvas API for instant client-side rotation.
  */
 async function rotateBase64Image(
   base64: string,
   degrees: number,
   mimeType: string = 'image/png',
 ): Promise<string> {
-  if (isTauri()) {
-    return safeInvoke<string>('rotate_image', {
-      imageBase64: base64,
-      mimeType,
+  // Try backend rotation first
+  try {
+    return await apiPost<string>('/api/rotate', {
+      image_base64: base64,
+      mime_type: mimeType,
       degrees,
     });
+  } catch {
+    // Fallback: Canvas rotation (client-side, instant)
   }
 
-  // Canvas rotation for browser mode
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {

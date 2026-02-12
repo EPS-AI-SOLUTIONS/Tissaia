@@ -1,15 +1,14 @@
 // src/hooks/api/useVerification.ts
 /**
- * Verification Hooks
- * ==================
+ * Verification Hooks — v4.0 Web Edition
+ * =======================================
  * Fire-and-forget verification hooks using Gemini 3 Flash.
  * These never block the pipeline — silent onError.
+ * Always connects to the Axum backend via HTTP.
  */
 import { useMutation } from '@tanstack/react-query';
-import { isTauri } from '../../utils/tauri';
-import { createMockVerificationResult, MOCK_VERIFICATION_DELAY } from './mocks';
 import type { BoundingBox, VerificationResult } from './types';
-import { delay, safeInvoke } from './utils';
+import { apiPost } from './utils';
 
 // ============================================
 // VERIFY RESTORATION
@@ -32,15 +31,10 @@ export function useVerifyRestoration() {
       restoredBase64,
       mimeType,
     }: VerifyRestorationParams): Promise<VerificationResult> => {
-      if (!isTauri()) {
-        await delay(MOCK_VERIFICATION_DELAY);
-        return createMockVerificationResult('restoration');
-      }
-
-      return safeInvoke<VerificationResult>('verify_restoration', {
-        originalBase64,
-        restoredBase64,
-        mimeType,
+      return apiPost<VerificationResult>('/api/verify/restoration', {
+        original_base64: originalBase64,
+        restored_base64: restoredBase64,
+        mime_type: mimeType,
       });
     },
     onError: (error) => {
@@ -70,15 +64,10 @@ export function useVerifyDetection() {
       mimeType,
       boundingBoxes,
     }: VerifyDetectionParams): Promise<VerificationResult> => {
-      if (!isTauri()) {
-        await delay(MOCK_VERIFICATION_DELAY);
-        return createMockVerificationResult('detection');
-      }
-
-      return safeInvoke<VerificationResult>('verify_detection', {
-        imageBase64,
-        mimeType,
-        boundingBoxes,
+      return apiPost<VerificationResult>('/api/verify/detection', {
+        image_base64: imageBase64,
+        mime_type: mimeType,
+        bounding_boxes: boundingBoxes,
       });
     },
     onError: (error) => {
@@ -108,15 +97,10 @@ export function useVerifyCrop() {
       mimeType,
       cropIndex,
     }: VerifyCropParams): Promise<VerificationResult> => {
-      if (!isTauri()) {
-        await delay(MOCK_VERIFICATION_DELAY);
-        return createMockVerificationResult('crop');
-      }
-
-      return safeInvoke<VerificationResult>('verify_crop', {
-        croppedBase64,
-        mimeType,
-        cropIndex,
+      return apiPost<VerificationResult>('/api/verify/crop', {
+        cropped_base64: croppedBase64,
+        mime_type: mimeType,
+        crop_index: cropIndex,
       });
     },
     onError: (error) => {

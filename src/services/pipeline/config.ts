@@ -35,7 +35,7 @@ export const TIFF_BIG_ENDIAN: number[] = [0x4d, 0x4d];
 
 export const DEFAULT_SMART_CROP: SmartCropOptions = {
   strategy: 'adaptive',
-  padding: 0.02, // 2% padding factor
+  padding: 0.005, // 0.5% minimal padding (AI bbox should be tight)
   minShardSize: 50, // minimum pixels
   maxShards: 100,
   preserveAspectRatio: true,
